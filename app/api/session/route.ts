@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buyerSessionConfig, buildInstructions } from "@/lib/buyerPersona";
+import { checkRateLimit } from "@/lib/rateLimit";
 import type { SessionConfig } from "@/lib/types";
 
 // Server-only. Holds the real API key and mints a short-lived ephemeral client
@@ -59,7 +60,28 @@ function missingKey() {
   );
 }
 
-async function handle(config: SessionConfig) {
+// Money-guard: cap sessions per IP so a stuck retry loop in another lane's code
+// can't silently burn OpenAI credits. Not security — just a runaway backstop.
+function rateLimited(req: Request) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const limit = checkRateLimit(ip);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many sessions started. Try again in a bit." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds ?? 3600) },
+      }
+    );
+  }
+  return null;
+}
+
+async function handle(req: Request, config: SessionConfig) {
+  const limited = rateLimited(req);
+  if (limited) return limited;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return missingKey();
 
@@ -91,10 +113,10 @@ export async function POST(req: Request) {
   } catch {
     // no/invalid body -> fall back to the hardcoded buyer
   }
-  return handle(config);
+  return handle(req, config);
 }
 
 // GET falls back to the hardcoded buyer (handy for a quick server-side check).
-export async function GET() {
-  return handle(buyerSessionConfig);
+export async function GET(req: Request) {
+  return handle(req, buyerSessionConfig);
 }
