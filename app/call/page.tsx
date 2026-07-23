@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRealtimeSession } from "@/hooks/useRealtimeSession";
 import { buyerSessionConfig } from "@/lib/buyerPersona";
+import { loadSessionConfig } from "@/lib/sessionStore";
+import type { SessionConfig } from "@/lib/types";
 import { Orb } from "@/components/call/Orb";
 import { CallControls } from "@/components/call/CallControls";
 import { InstructionsPanel } from "@/components/call/InstructionsPanel";
@@ -13,8 +15,26 @@ const SPEAKER_LABEL: Record<string, string> = {
   silent: "Listening…",
 };
 
+// Loads the SessionConfig produced by /setup (falling back to the hardcoded
+// buyer for a direct visit), then mounts the call once it's ready — so the
+// hook is created exactly once with a stable config.
 export default function CallPage() {
-  const session = useRealtimeSession(buyerSessionConfig);
+  const [config, setConfig] = useState<SessionConfig | null>(null);
+  useEffect(() => {
+    setConfig(loadSessionConfig() ?? buyerSessionConfig);
+  }, []);
+
+  if (!config) {
+    return (
+      <main className="mesh-bg flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted">Preparing your call…</p>
+      </main>
+    );
+  }
+  return <CallScreen config={config} />;
+}
+
+function CallScreen({ config }: { config: SessionConfig }) {
   const {
     status,
     error,
@@ -26,7 +46,7 @@ export default function CallPage() {
     start,
     toggleMute,
     endCall,
-  } = session;
+  } = useRealtimeSession(config);
 
   // Keep the transcript scrolled to the latest line.
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -36,7 +56,7 @@ export default function CallPage() {
 
   return (
     <main className="mesh-bg flex min-h-screen flex-col gap-6 p-6 lg:flex-row lg:p-10">
-      <InstructionsPanel />
+      <InstructionsPanel config={config} />
 
       <section className="flex flex-1 flex-col items-center justify-between gap-6 rounded-2xl glass p-6">
         {/* Orb + status */}
@@ -47,7 +67,7 @@ export default function CallPage() {
             localAnalyser={localAnalyser}
             remoteAnalyser={remoteAnalyser}
           />
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-muted">
             {status === "live"
               ? SPEAKER_LABEL[speaker]
               : status === "connecting"
@@ -62,7 +82,11 @@ export default function CallPage() {
           {status === "idle" && (
             <button
               onClick={start}
-              className="rounded-full bg-indigo-500 px-8 py-3 font-medium text-white transition hover:bg-indigo-400"
+              className="rounded-full px-8 py-3 font-medium text-white transition-transform hover:scale-[1.02]"
+              style={{
+                backgroundImage: "linear-gradient(135deg,#3B82F6,#2563EB)",
+                boxShadow: "0 8px 30px rgba(37,99,235,0.45)",
+              }}
             >
               Start call
             </button>
@@ -91,22 +115,15 @@ export default function CallPage() {
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
           Transcript
         </h2>
-        <div
-          ref={scrollRef}
-          className="flex flex-1 flex-col gap-3 overflow-y-auto text-sm"
-        >
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto text-sm">
           {transcript.length === 0 && (
-            <p className="text-neutral-600">
-              The conversation will appear here as you talk.
-            </p>
+            <p className="text-neutral-600">The conversation will appear here as you talk.</p>
           )}
           {transcript.map((entry) => (
             <div key={entry.id}>
               <span
                 className={`text-xs font-semibold ${
-                  entry.role === "user"
-                    ? "text-emerald-400"
-                    : "text-indigo-400"
+                  entry.role === "user" ? "text-emerald-400" : "text-indigo-400"
                 }`}
               >
                 {entry.role === "user" ? "You" : "Buyer"}

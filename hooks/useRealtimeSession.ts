@@ -38,6 +38,9 @@ export function useRealtimeSession(config: SessionConfig) {
   // StrictMode double-mount guard: a second init while one is in flight (or one
   // is already live) must be a no-op.
   const startedRef = useRef(false);
+  // Latest config for start() to POST, without re-memoizing start().
+  const configRef = useRef(config);
+  configRef.current = config;
   // Mock-mode timers so we can clear them on teardown.
   const mockTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -182,7 +185,11 @@ export function useRealtimeSession(config: SessionConfig) {
 
     try {
       // 1. Mint ephemeral client secret from our server route.
-      const tokenRes = await fetch("/api/session");
+      const tokenRes = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: configRef.current }),
+      });
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok) {
         throw new Error(tokenData?.error ?? "Failed to mint session token.");
