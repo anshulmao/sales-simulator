@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useRealtimeSession } from "@/hooks/useRealtimeSession";
 import { buyerSessionConfig } from "@/lib/buyerPersona";
-import { loadSessionConfig } from "@/lib/sessionStore";
+import { loadSessionConfig, saveSession } from "@/lib/sessionStore";
 import type { SessionConfig } from "@/lib/types";
 import { Orb } from "@/components/call/Orb";
 import { CallControls } from "@/components/call/CallControls";
@@ -35,6 +36,7 @@ export default function CallPage() {
 }
 
 function CallScreen({ config }: { config: SessionConfig }) {
+  const router = useRouter();
   const {
     status,
     error,
@@ -47,6 +49,28 @@ function CallScreen({ config }: { config: SessionConfig }) {
     toggleMute,
     endCall,
   } = useRealtimeSession(config);
+
+  // Stamp when the call actually began so the report can show a duration.
+  const startedAtRef = useRef<number>(0);
+
+  const handleStart = () => {
+    startedAtRef.current = Date.now();
+    start();
+  };
+
+  // Phase 3 -> 4 seam: capture the completed transcript, stash the finished
+  // session, and hand off to the report. We do NOT score here — that's the
+  // evaluation model's job (teammate B).
+  const handleEnd = () => {
+    const finalTranscript = endCall();
+    saveSession({
+      config,
+      transcript: finalTranscript,
+      endedAt: Date.now(),
+      durationMs: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
+    });
+    router.push("/report");
+  };
 
   // Keep the transcript scrolled to the latest line.
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -81,7 +105,7 @@ function CallScreen({ config }: { config: SessionConfig }) {
 
           {status === "idle" && (
             <button
-              onClick={start}
+              onClick={handleStart}
               className="rounded-full px-8 py-3 font-medium text-white transition-transform hover:scale-[1.02]"
               style={{
                 backgroundImage: "linear-gradient(135deg,#3B82F6,#2563EB)",
@@ -104,7 +128,7 @@ function CallScreen({ config }: { config: SessionConfig }) {
           <CallControls
             isMuted={isMuted}
             onToggleMute={toggleMute}
-            onEndCall={endCall}
+            onEndCall={handleEnd}
             disabled={status === "connecting"}
           />
         )}
