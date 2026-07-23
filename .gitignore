@@ -11,3 +11,7 @@ yarn-error.log*
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# reference media (local only)
+*.mov
+Orb reference.jpg
