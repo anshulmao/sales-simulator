@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Blob } from "@/components/ui/Blob";
 import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
+import { BackLink } from "@/components/nav/BackLink";
 import type { SessionConfig } from "@/lib/types";
 import { saveSessionConfig } from "@/lib/sessionStore";
 
@@ -165,6 +166,10 @@ export default function Setup() {
 
   return (
     <main className="mesh-bg flex min-h-[100dvh] flex-col items-center gap-8 px-5 py-12 sm:px-10 lg:px-14">
+      <Reveal className="w-[1180px] max-w-full">
+        <BackLink href="/" label="Back to home" />
+      </Reveal>
+
       <Reveal className="flex w-full flex-col items-center gap-2 text-center">
         <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#93C5FD]">New session</span>
         <h1 className="text-[28px] font-semibold tracking-tight text-ink sm:text-[32px]">Set up your call</h1>

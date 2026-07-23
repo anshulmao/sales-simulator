@@ -1,6 +1,7 @@
 import { Blob } from "@/components/ui/Blob";
 import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
+import { BackLink } from "@/components/nav/BackLink";
 
 const FEATURES = [
   { label: "Live voice roleplay", stroke: "#22D3EE", icon: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2" },
@@ -10,7 +11,11 @@ const FEATURES = [
 
 export default function Onboarding() {
   return (
-    <main className="mesh-bg-center flex min-h-[100dvh] flex-col items-center justify-center gap-10 px-6 py-16 sm:px-12">
+    <main className="mesh-bg-center relative flex min-h-[100dvh] flex-col items-center justify-center gap-10 px-6 py-24 sm:px-12 sm:py-16">
+      <Reveal className="absolute left-6 top-7 sm:left-12 sm:top-10">
+        <BackLink href="/settings" label="Back to settings" />
+      </Reveal>
+
       <Reveal className="[transition-duration:1000ms]">
         <Blob size={200} glow={130} />
       </Reveal>

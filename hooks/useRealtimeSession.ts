@@ -38,6 +38,9 @@ export function useRealtimeSession(config: SessionConfig) {
   // StrictMode double-mount guard: a second init while one is in flight (or one
   // is already live) must be a no-op.
   const startedRef = useRef(false);
+  // Incrementing this token invalidates any async start sequence still waiting
+  // on a network or microphone promise when the user leaves the call.
+  const startAttemptRef = useRef(0);
   // Latest config for start() to POST, without re-memoizing start().
   const configRef = useRef(config);
   configRef.current = config;
@@ -121,6 +124,7 @@ export function useRealtimeSession(config: SessionConfig) {
   // Full teardown. Order matters: data channel -> peer connection -> local
   // tracks -> AudioContext. Wrong order leaves the mic indicator lit.
   const teardown = useCallback(() => {
+    startAttemptRef.current += 1;
     mockTimersRef.current.forEach(clearTimeout);
     mockTimersRef.current = [];
 
@@ -173,6 +177,9 @@ export function useRealtimeSession(config: SessionConfig) {
     // Guard: no-op if already started/in-flight (handles StrictMode remount).
     if (startedRef.current) return;
     startedRef.current = true;
+    const attempt = startAttemptRef.current + 1;
+    startAttemptRef.current = attempt;
+    const isCurrentAttempt = () => startAttemptRef.current === attempt;
 
     setError(null);
     setTranscript([]);
@@ -191,6 +198,7 @@ export function useRealtimeSession(config: SessionConfig) {
         body: JSON.stringify({ config: configRef.current }),
       });
       const tokenData = await tokenRes.json();
+      if (!isCurrentAttempt()) return;
       if (!tokenRes.ok) {
         throw new Error(tokenData?.error ?? "Failed to mint session token.");
       }
@@ -203,6 +211,10 @@ export function useRealtimeSession(config: SessionConfig) {
       const localStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
+      if (!isCurrentAttempt()) {
+        localStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       localStreamRef.current = localStream;
 
       // 3. Peer connection.
@@ -254,7 +266,7 @@ export function useRealtimeSession(config: SessionConfig) {
 
       // 7. SDP offer -> OpenAI -> answer.
       const offer = await pc.createOffer();
-      if (pcRef.current !== pc) return; // torn down mid-flight
+      if (!isCurrentAttempt() || pcRef.current !== pc) return; // torn down mid-flight
       await pc.setLocalDescription(offer);
 
       const sdpRes = await fetch(REALTIME_CALLS_URL, {
@@ -265,14 +277,16 @@ export function useRealtimeSession(config: SessionConfig) {
           "Content-Type": "application/sdp",
         },
       });
-      if (pcRef.current !== pc) return; // torn down mid-flight
+      if (!isCurrentAttempt() || pcRef.current !== pc) return; // torn down mid-flight
 
       if (!sdpRes.ok) {
         throw new Error(`Realtime handshake failed (${sdpRes.status}).`);
       }
       const answer = { type: "answer" as const, sdp: await sdpRes.text() };
+      if (!isCurrentAttempt() || pcRef.current !== pc) return;
       await pc.setRemoteDescription(answer);
     } catch (err) {
+      if (!isCurrentAttempt()) return;
       setError(err instanceof Error ? err.message : "Failed to start session.");
       setStatus("error");
       teardown();

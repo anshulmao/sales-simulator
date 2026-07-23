@@ -9,6 +9,7 @@ import type { SessionConfig } from "@/lib/types";
 import { Orb } from "@/components/call/Orb";
 import { CallControls } from "@/components/call/CallControls";
 import { InstructionsPanel } from "@/components/call/InstructionsPanel";
+import { BackLink } from "@/components/nav/BackLink";
 import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
 
@@ -29,7 +30,12 @@ export default function CallPage() {
 
   if (!config) {
     return (
-      <main className="mesh-bg flex min-h-[100dvh] flex-col items-center justify-center gap-4">
+      <main className="mesh-bg relative flex min-h-[100dvh] flex-col items-center justify-center gap-4">
+        <BackLink
+          href="/setup"
+          label="Back to setup"
+          className="absolute left-5 top-5 sm:left-6 sm:top-6 lg:left-10 lg:top-10"
+        />
         <div className="h-10 w-10 animate-ambient-pulse rounded-full" style={{ backgroundImage: "linear-gradient(135deg,#3B82F6,#2563EB)", boxShadow: "0 0 40px 4px rgba(37,99,235,0.5)" }} />
         <p className="text-sm text-muted">Preparing your call…</p>
       </main>
@@ -40,6 +46,8 @@ export default function CallPage() {
 
 function CallScreen({ config }: { config: SessionConfig }) {
   const router = useRouter();
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const {
     status,
     error,
@@ -68,13 +76,18 @@ function CallScreen({ config }: { config: SessionConfig }) {
   // shows "Call ended" meanwhile, and the controls are already gone.)
   const handleEnd = async () => {
     const finalTranscript = endCall();
-    const id = await saveSession({
-      config,
-      transcript: finalTranscript,
-      endedAt: Date.now(),
-      durationMs: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
-    });
-    router.push(`/report?id=${encodeURIComponent(id)}`);
+    setIsSaving(true);
+    try {
+      const id = await saveSession({
+        config,
+        transcript: finalTranscript,
+        endedAt: Date.now(),
+        durationMs: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
+      });
+      router.push(`/report?id=${encodeURIComponent(id)}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Keep the transcript scrolled to the latest line.
@@ -84,10 +97,59 @@ function CallScreen({ config }: { config: SessionConfig }) {
   }, [transcript]);
 
   const live = status === "live";
+  const callInProgress = live || status === "connecting";
+
+  const handleBack = () => {
+    if (callInProgress) {
+      setShowLeaveDialog(true);
+      return;
+    }
+    router.push("/setup");
+  };
+
+  const handleLeave = () => {
+    endCall();
+    setShowLeaveDialog(false);
+    router.push("/setup");
+  };
+
+  // Protect refresh, tab close, and external navigation in addition to the
+  // in-app confirmation dialog.
+  useEffect(() => {
+    if (!callInProgress) return;
+
+    const confirmBrowserExit = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", confirmBrowserExit);
+    return () => window.removeEventListener("beforeunload", confirmBrowserExit);
+  }, [callInProgress]);
+
+  useEffect(() => {
+    if (!showLeaveDialog) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowLeaveDialog(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [showLeaveDialog]);
 
   return (
     <main className="mesh-bg flex min-h-[100dvh] flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:p-10">
-      <Reveal as="div" className="lg:w-auto">
+      <Reveal as="div" className="flex flex-col gap-4 lg:w-auto">
+        {isSaving ? (
+          <span className="flex w-max items-center gap-2.5 py-1 text-[14px] font-medium text-muted">
+            <span className="h-2 w-2 animate-ambient-pulse rounded-full bg-primary" />
+            Saving your report…
+          </span>
+        ) : (
+          <BackLink
+            onClick={handleBack}
+            label={callInProgress ? "Leave call" : "Back to setup"}
+          />
+        )}
         <InstructionsPanel config={config} />
       </Reveal>
 
@@ -170,6 +232,51 @@ function CallScreen({ config }: { config: SessionConfig }) {
           ))}
         </div>
       </Reveal>
+
+      {showLeaveDialog ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowLeaveDialog(false);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="leave-call-title"
+            aria-describedby="leave-call-description"
+            className="bezel w-full max-w-[440px]"
+          >
+            <div className="bezel-inner flex flex-col gap-5 px-6 py-7 sm:px-8">
+              <div className="flex flex-col gap-2">
+                <h2 id="leave-call-title" className="text-[20px] font-semibold tracking-tight text-ink">
+                  Leave this call?
+                </h2>
+                <p id="leave-call-description" className="text-[14px] leading-[21px] text-muted">
+                  Your transcript and progress from this call won&apos;t be saved.
+                </p>
+              </div>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => setShowLeaveDialog(false)}
+                  className="rounded-full border border-line px-6 py-3 text-[14px] font-semibold text-ink outline-none transition-colors hover:border-white/25 focus-visible:ring-2 focus-visible:ring-primary/70"
+                >
+                  Stay on call
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLeave}
+                  className="rounded-full border border-danger/50 bg-danger/[0.16] px-6 py-3 text-[14px] font-semibold text-[#FCA5A5] outline-none transition-colors hover:bg-danger/[0.24] focus-visible:ring-2 focus-visible:ring-danger/70"
+                >
+                  Leave call
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
