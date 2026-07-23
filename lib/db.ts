@@ -124,7 +124,7 @@ export async function listSessions(limit = 50): Promise<SessionSummary[]> {
       role: config?.persona?.role ?? "Unknown",
       resistance: config?.persona?.resistance ?? "",
       salesStage: config?.scenario?.salesStage ?? "",
-      overallScore: report?.overallScore ?? null,
+      overallScore: report?.overall ?? null,
     };
   });
 }

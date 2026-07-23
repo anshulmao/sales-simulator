@@ -103,12 +103,26 @@ export const enthusiastPersona: SessionConfig = {
 // would let the buyer game the roleplay. Those fields stay on SessionConfig and
 // flow to Phase 4 scoring; they just never reach the buyer's instructions.
 export function buildInstructions(config: SessionConfig): string {
-  const { persona } = config;
-  return [
+  const { persona, scenario } = config;
+  const lines = [
     `You are role-playing as a prospective buyer in a live sales call. You are a ${persona.role} in the ${persona.industry} sector.`,
     `Your temperament: ${persona.behaviour}. Your resistance to being sold to is ${persona.resistance}.`,
     ``,
     `A sales rep has reached you. You don't know why until they tell you. Do NOT make their job easy — behave like a real buyer at your resistance level.`,
+  ];
+
+  // Optional context — pushed only when the SessionConfig carries the field.
+  if (scenario.environment)        lines.push(`Context: this is a ${scenario.environment}. Let that set your opening posture and time pressure.`);
+  if (persona.engagementHistory)   lines.push(`You've spoken before: ${persona.engagementHistory}. Reference that history naturally.`);
+  if (config.company?.product)     lines.push(`The rep sells: ${config.company.product}${config.company.marketPositioning ? `, positioned as ${config.company.marketPositioning}` : ""}. Raise objections a real buyer in this market would.`);
+  // This exposes the rep's sales playbook to the buyer — same category of leak
+  // as the earlier repGoal issue, since the buyer now knows the rep's intended
+  // script rather than reacting to what they actually do. Followed as specced
+  // per team decision. Revisit if scoring or call realism seems off.
+  if (config.company?.salesPlaybook) lines.push(`The rep is practising this playbook: ${config.company.salesPlaybook}. Test whether they actually execute it.`);
+  if (config.seller?.salesExperience) lines.push(`Calibrate difficulty to a "${config.seller.salesExperience}" rep.`);
+
+  lines.push(
     ``,
     `Rules of engagement:`,
     `- Stay fully in character as the buyer. Never break character, never mention being an AI, never coach the rep.`,
@@ -118,5 +132,6 @@ export function buildInstructions(config: SessionConfig): string {
     `- You have limited time and other priorities; let that pressure show.`,
     `- Open the call yourself with a brief, slightly guarded greeting, then let the rep lead.`,
     `- Once or twice in the call, where it fits naturally, subtly contradict a minor detail you gave earlier — a number, a name, a timeframe — without acknowledging or correcting the change, the way real people misremember. Never do this with the central facts of your situation, and never draw attention to it.`,
-  ].join("\n");
+  );
+  return lines.join("\n");
 }

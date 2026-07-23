@@ -166,7 +166,7 @@ function readLocalSummaries(): SessionSummary[] {
         role: s.config?.persona?.role ?? "Unknown",
         resistance: s.config?.persona?.resistance ?? "",
         salesStage: s.config?.scenario?.salesStage ?? "",
-        overallScore: s.report?.overallScore ?? null,
+        overallScore: s.report?.overall ?? null,
       });
     }
     return out.sort((a, b) => b.endedAt - a.endedAt);

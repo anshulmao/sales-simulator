@@ -21,47 +21,49 @@ const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 // whatever the model returns — so a dropped judgment can't silently inflate a
 // score. Editing this is a reviewed code diff, not a prompt tweak. The behaviors
 // are the observable, transcript-checkable yes/no coaching signals.
+// `title` is a short label used for strengths/improvements/keyMoments; `text`
+// is the observable criterion, reused verbatim as the detail line.
 const RUBRIC: {
   dimension: ReportDimension;
-  behaviors: { id: string; text: string }[];
+  behaviors: { id: string; title: string; text: string }[];
 }[] = [
   {
     dimension: "opening",
     behaviors: [
-      { id: "opening_identified_self", text: "Identified themselves and their company in their first turn" },
-      { id: "opening_stated_purpose", text: "Stated a reason for the call before pitching anything" },
-      { id: "opening_checked_time", text: "Checked it was a good time / asked permission to continue" },
+      { id: "opening_identified_self", title: "Introduced self and company", text: "Identified themselves and their company in their first turn" },
+      { id: "opening_stated_purpose", title: "Stated the call's purpose", text: "Stated a reason for the call before pitching anything" },
+      { id: "opening_checked_time", title: "Checked timing", text: "Checked it was a good time / asked permission to continue" },
     ],
   },
   {
     dimension: "discovery",
     behaviors: [
-      { id: "discovery_open_questions", text: "Asked at least two open-ended questions before presenting a solution" },
-      { id: "discovery_followed_up", text: "Referenced something the buyer said earlier (built on the buyer's words)" },
-      { id: "discovery_quantified_pain", text: "Surfaced a quantified pain point (a number, cost, or concrete impact)" },
+      { id: "discovery_open_questions", title: "Open-ended questions", text: "Asked at least two open-ended questions before presenting a solution" },
+      { id: "discovery_followed_up", title: "Built on the buyer's words", text: "Referenced something the buyer said earlier (built on the buyer's words)" },
+      { id: "discovery_quantified_pain", title: "Quantified the pain", text: "Surfaced a quantified pain point (a number, cost, or concrete impact)" },
     ],
   },
   {
     dimension: "objection",
     behaviors: [
-      { id: "objection_acknowledged", text: "Acknowledged the objection before responding" },
-      { id: "objection_clarified", text: "Asked a clarifying question about the objection instead of immediately rebutting" },
-      { id: "objection_addressed", text: "Response addressed the specific objection raised, not a canned pivot" },
+      { id: "objection_acknowledged", title: "Acknowledged the objection", text: "Acknowledged the objection before responding" },
+      { id: "objection_clarified", title: "Clarified before rebutting", text: "Asked a clarifying question about the objection instead of immediately rebutting" },
+      { id: "objection_addressed", title: "Addressed the specific objection", text: "Response addressed the specific objection raised, not a canned pivot" },
     ],
   },
   {
     dimension: "closing",
     behaviors: [
-      { id: "closing_proposed_next_step", text: "Proposed a specific, concrete next step (named meeting, demo, or date)" },
-      { id: "closing_got_commitment", text: "Got an explicit commitment or agreement from the buyer" },
-      { id: "closing_restated_value", text: "Restated value before asking for the next step" },
+      { id: "closing_proposed_next_step", title: "Proposed a next step", text: "Proposed a specific, concrete next step (named meeting, demo, or date)" },
+      { id: "closing_got_commitment", title: "Secured a commitment", text: "Got an explicit commitment or agreement from the buyer" },
+      { id: "closing_restated_value", title: "Restated value", text: "Restated value before asking for the next step" },
     ],
   },
 ];
 
 // Flat view of every behavior with its owning dimension — the order the report
 // evidence and derived lists are built in.
-const ALL_BEHAVIORS: { dimension: ReportDimension; id: string; text: string }[] =
+const ALL_BEHAVIORS: { dimension: ReportDimension; id: string; title: string; text: string }[] =
   RUBRIC.flatMap((d) => d.behaviors.map((b) => ({ dimension: d.dimension, ...b })));
 
 // The model returns one of these per behavior id, and nothing else.
@@ -223,35 +225,110 @@ function validateJudgments(
   return result;
 }
 
-// Aggregate validated judgments into the Report. All arithmetic lives here.
-function buildReport(judgments: Record<string, Judgment>): Report {
-  const evidence: NonNullable<Report["evidence"]> = ALL_BEHAVIORS.map((b) => ({
-    dimension: b.dimension,
-    behavior: b.text,
-    passed: judgments[b.id].passed,
-    transcriptEntryId: judgments[b.id].transcriptEntryId ?? "",
+// -1 marks a value we did not measure. There is NO audio anywhere in this
+// pipeline, so any 0–10 number for voice would be fabricated, not estimated.
+// -1 is deliberately outside the 0–10 range so it cannot read as a real score;
+// range-aware UI should render it as "not measured". The clean fix is to make
+// Report.voice optional in the contract — a coordinated change to types.ts.
+const VOICE_UNAVAILABLE = -1;
+
+// Aggregate validated judgments into the Report. All arithmetic lives here;
+// every field is derived from the rubric judgments, never asked of the model.
+function buildReport(
+  judgments: Record<string, Judgment>,
+  transcript: TranscriptEntry[]
+): Report {
+  // Per-dimension 0–10 score = round((passed / total) * 10).
+  const dimScore = (dimension: ReportDimension): number => {
+    const behaviors = RUBRIC.find((d) => d.dimension === dimension)!.behaviors;
+    const passed = behaviors.filter((b) => judgments[b.id].passed).length;
+    return Math.round((passed / behaviors.length) * 10);
+  };
+  const opening = dimScore("opening");
+  const discovery = dimScore("discovery");
+  const objection = dimScore("objection");
+  const closing = dimScore("closing");
+
+  // A1 (team decision): closing is scored and counts toward overall even though
+  // Report.scenario has no slot to display it — so overall is the mean of all
+  // four coached dimensions, and won't equal the mean of the three visible bars.
+  const overall = Math.round((opening + discovery + objection + closing) / 4);
+
+  // `o` is objection — confirmed a truncation of "objection" in the Report
+  // contract, not a distinct field. Closing is intentionally absent here (A1).
+  const scenario = { opening, discovery, o: objection };
+
+  // strengths/improvements: title from the rubric, detail = the observable
+  // criterion verbatim. Placement (passed → strength, failed → improvement)
+  // carries the valence; nothing is reframed or invented.
+  const strengths = ALL_BEHAVIORS.filter((b) => judgments[b.id].passed).map((b) => ({
+    title: b.title,
+    detail: b.text,
+  }));
+  const improvements = ALL_BEHAVIORS.filter((b) => !judgments[b.id].passed).map((b) => ({
+    title: b.title,
+    detail: b.text,
   }));
 
-  // dimension score = round((passed / total) * 10)
-  const breakdown = {} as Report["breakdown"];
-  for (const d of RUBRIC) {
-    const passed = d.behaviors.filter((b) => judgments[b.id].passed).length;
-    const score = Math.round((passed / d.behaviors.length) * 10);
-    breakdown[d.dimension] = score;
-  }
+  // keyMoments: only PASSED behaviors carry a cited transcript entry (failures
+  // cite null by construction — see validateJudgments), so only they can be
+  // timestamped. atMs is an offset from the first utterance, not epoch ms.
+  const t0 = transcript.length > 0 ? transcript[0].timestamp : 0;
+  const byId = new Map(transcript.map((e) => [e.id, e]));
+  const keyMoments = ALL_BEHAVIORS.flatMap((b) => {
+    const j = judgments[b.id];
+    if (!j.passed || j.transcriptEntryId === null) return [];
+    const entry = byId.get(j.transcriptEntryId);
+    if (!entry) return [];
+    return [{ atMs: entry.timestamp - t0, label: b.title, note: b.text }];
+  });
 
-  // overallScore = equal-weighted average of the four dimension scores.
-  const dims: ReportDimension[] = ["opening", "discovery", "objection", "closing"];
-  const overallScore = Math.round(
-    dims.reduce((sum, d) => sum + breakdown[d], 0) / dims.length
-  );
+  // headline/summary/nextStep: deterministic templates over the dimension scores
+  // and counts. No free-floating model opinion.
+  const dims: { name: ReportDimension; score: number }[] = [
+    { name: "opening", score: opening },
+    { name: "discovery", score: discovery },
+    { name: "objection", score: objection },
+    { name: "closing", score: closing },
+  ];
+  const best = dims.reduce((a, b) => (b.score > a.score ? b : a));
+  const worst = dims.reduce((a, b) => (b.score < a.score ? b : a));
+  const allTie = dims.every((d) => d.score === dims[0].score);
 
-  // strengths/improvements are DERIVED from which behaviors passed — never asked
-  // of the model. Every string is a rubric behavior, traceable to an evidence row.
-  const strengths = ALL_BEHAVIORS.filter((b) => judgments[b.id].passed).map((b) => b.text);
-  const improvements = ALL_BEHAVIORS.filter((b) => !judgments[b.id].passed).map((b) => b.text);
+  const band =
+    overall >= 8 ? "Strong call" : overall >= 5 ? "Solid call with clear gaps" : "Needs work";
+  const headline = allTie
+    ? band
+    : `${band} — strongest on ${best.name}, weakest on ${worst.name}`;
 
-  return { overallScore, strengths, improvements, breakdown, evidence };
+  const passedCount = ALL_BEHAVIORS.filter((b) => judgments[b.id].passed).length;
+  const summary =
+    `Passed ${passedCount} of ${ALL_BEHAVIORS.length} coached behaviors. ` +
+    `Strongest in ${best.name} (${best.score}/10); weakest in ${worst.name} (${worst.score}/10).`;
+
+  // nextStep: the weakest dimension's first missed behavior, or — if nothing was
+  // missed — push for harder practice.
+  const worstBehaviors = RUBRIC.find((d) => d.dimension === worst.name)!.behaviors;
+  const firstMiss = worstBehaviors.find((b) => !judgments[b.id].passed);
+  const nextStep = firstMiss
+    ? `Work on ${worst.name}: ${firstMiss.text}.`
+    : "No coached behaviors missed — raise the difficulty with a higher-resistance buyer or tougher objections.";
+
+  return {
+    overall,
+    headline,
+    summary,
+    voice: {
+      clarity: VOICE_UNAVAILABLE,
+      pace: VOICE_UNAVAILABLE,
+      tone: VOICE_UNAVAILABLE,
+    },
+    scenario,
+    keyMoments,
+    strengths,
+    improvements,
+    nextStep,
+  };
 }
 
 export async function scoreSession(
@@ -265,5 +342,5 @@ export async function scoreSession(
 
   const raw = await requestJudgments(apiKey, config, transcript);
   const judgments = validateJudgments(raw, transcript);
-  return buildReport(judgments);
+  return buildReport(judgments, transcript);
 }
