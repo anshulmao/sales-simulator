@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { Blob } from "@/components/ui/Blob";
+import { Cta } from "@/components/ui/Cta";
+import { Reveal } from "@/components/ui/Reveal";
 
 const FEATURES = [
   { label: "Live voice roleplay", stroke: "#22D3EE", icon: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2" },
@@ -9,40 +10,51 @@ const FEATURES = [
 
 export default function Onboarding() {
   return (
-    <main className="mesh-bg-center flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <Blob size={200} glow={130} />
+    <main className="mesh-bg-center flex min-h-[100dvh] flex-col items-center justify-center gap-10 px-6 py-16 sm:px-12">
+      <Reveal className="[transition-duration:1000ms]">
+        <Blob size={200} glow={130} />
+      </Reveal>
 
       <div className="flex max-w-[680px] flex-col items-center gap-[18px]">
-        <span className="text-[13px] font-semibold tracking-[0.14em] text-[#93C5FD]">SALESCOACH</span>
-        <h1 className="text-center text-[52px] font-semibold leading-[58px] tracking-[-0.03em] text-ink">
-          Practise the call before it matters.
-        </h1>
-        <p className="text-center text-[18px] leading-7 text-muted">
-          Have a real spoken roleplay with an AI buyer, then get a scored breakdown of exactly what
-          to sharpen — voice, discovery, objections, and closing.
-        </p>
+        <Reveal delay={80}>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#93C5FD]">
+            Salescoach
+          </span>
+        </Reveal>
+        <Reveal delay={160}>
+          <h1 className="text-center text-[40px] font-semibold leading-[1.05] tracking-[-0.03em] text-ink sm:text-[52px] sm:leading-[58px]">
+            Practise the call<br className="hidden sm:block" /> before it matters.
+          </h1>
+        </Reveal>
+        <Reveal delay={240}>
+          <p className="max-w-[560px] text-center text-[17px] leading-7 text-muted sm:text-[18px]">
+            Have a real spoken roleplay with an AI buyer, then get a scored breakdown of exactly what
+            to sharpen — voice, discovery, objections, and closing.
+          </p>
+        </Reveal>
       </div>
 
-      <div className="flex gap-3.5">
+      <Reveal delay={320} className="flex flex-wrap items-center justify-center gap-3.5">
         {FEATURES.map((f) => (
-          <div key={f.label} className="flex items-center gap-2.5 rounded-full border border-line bg-[rgba(20,22,29,0.5)] px-[18px] py-3">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={f.stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={f.icon} /></svg>
+          <div
+            key={f.label}
+            className="flex items-center gap-2.5 rounded-full border border-line bg-[rgba(20,22,29,0.5)] px-[18px] py-3 transition-colors duration-300 ease-spring hover:border-white/20"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={f.stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={f.icon} /></svg>
             <span className="text-[14px] font-medium text-[#D7DAE3]">{f.label}</span>
           </div>
         ))}
-      </div>
+      </Reveal>
 
-      <div className="flex flex-col items-center gap-4">
-        <Link
+      <Reveal delay={420} className="flex flex-col items-center gap-4">
+        <Cta
           href="/setup"
-          className="flex items-center justify-center gap-2.5 rounded-[14px] px-10 py-[17px] text-[16px] font-semibold text-white transition-transform hover:scale-[1.02]"
-          style={{ backgroundImage: "linear-gradient(135deg,#3B82F6,#2563EB)", boxShadow: "0 10px 40px rgba(37,99,235,0.5)" }}
+          icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
         >
           Get started
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
-        </Link>
+        </Cta>
         <span className="text-[14px] font-medium text-muted">Takes about 2 minutes to set up</span>
-      </div>
+      </Reveal>
     </main>
   );
 }
