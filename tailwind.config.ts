@@ -24,6 +24,9 @@ export default {
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.32, 0.72, 0, 1)",
+      },
       keyframes: {
         "blob-morph": {
           "0%, 100%": {
