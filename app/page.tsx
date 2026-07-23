@@ -1,97 +1,70 @@
+"use client";
+
 import Link from "next/link";
-
-const NAV = [
-  { label: "Home", href: "/", active: true, icon: "M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z" },
-  { label: "Session history", href: "/", icon: "M3 3v5h5 M3.05 13A9 9 0 1 0 6 5.3L3 8 M12 7v5l4 2" },
-  { label: "Progress", href: "/", icon: "M3 3v18h18 M7 15l4-5 3 3 5-7" },
-  { label: "Settings", href: "/", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" },
-];
-
-const SESSIONS = [
-  { role: "VP of Operations · Discovery", meta: "Today, 11:20am · 8 min · High resistance", score: 82, color: "#22C55E", grad: "linear-gradient(135deg,#2563EB,#1E3A8A)" },
-  { role: "CFO · Objection handling", meta: "Yesterday, 4:05pm · 12 min · Medium resistance", score: 74, color: "#F59E0B", grad: "linear-gradient(135deg,#06B6D4,#0E7490)" },
-  { role: "Procurement Lead · Closing", meta: "Mon, 9:30am · 6 min · High resistance", score: 66, color: "#EF4444", grad: "linear-gradient(135deg,#7C5CFF,#4C1D95)" },
-];
-
-const STATS = [
-  { label: "Avg. overall score", value: "78", note: "▲ 6 vs last week", noteColor: "#22C55E" },
-  { label: "Objection handling", value: "71", note: "Focus area", noteColor: "#F59E0B" },
-  { label: "Talk / listen ratio", value: "43/57", note: "Healthy balance", noteColor: "#22C55E" },
-];
+import { useMemo } from "react";
+import { Cta } from "@/components/ui/Cta";
+import { Reveal } from "@/components/ui/Reveal";
+import { NavShell } from "@/components/nav/NavShell";
+import { SessionRow } from "@/components/session/SessionRow";
+import { useSessions } from "@/hooks/useSessions";
 
 export default function Home() {
+  const { sessions, loading } = useSessions();
+
+  // Real dashboard figures derived from stored sessions — no hardcoded metrics.
+  const stats = useMemo(() => {
+    const list = sessions ?? [];
+    const scored = list.filter((s) => s.overallScore != null).map((s) => s.overallScore as number);
+    return {
+      count: list.length,
+      avg: scored.length ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : null,
+      best: scored.length ? Math.max(...scored) : null,
+    };
+  }, [sessions]);
+
+  const recent = (sessions ?? []).slice(0, 4);
+
+  const TILES = [
+    { label: "Sessions run", value: stats.count.toString(), note: "across all practice", noteColor: "#8A90A0" },
+    { label: "Avg. overall score", value: stats.avg?.toString() ?? "—", note: stats.avg == null ? "no scored calls yet" : "keep it climbing", noteColor: "#22C55E" },
+    { label: "Best score", value: stats.best?.toString() ?? "—", note: stats.best == null ? "—" : "your personal best", noteColor: "#22C55E" },
+  ];
+
   return (
-    <main className="mesh-bg flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="flex w-[248px] shrink-0 flex-col gap-8 border-r border-line bg-[rgba(20,22,29,0.55)] px-5 py-7">
-        <div className="flex items-center gap-3 px-2">
-          <div
-            className="h-[34px] w-[34px] rounded-[11px]"
-            style={{
-              backgroundImage:
-                "radial-gradient(60% 60% at 35% 30%,#93C5FD,rgba(147,197,253,0)), linear-gradient(135deg,#2563EB,#1E3A8A)",
-              boxShadow: "0 0 24px 2px rgba(37,99,235,0.5)",
-            }}
-          />
-          <span className="text-[17px] font-semibold tracking-tight text-ink">Salescoach</span>
+    <NavShell>
+      <Reveal as="header" className="flex items-center justify-between">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">Good afternoon, William</h1>
+          <p className="text-[14px] text-muted sm:text-[15px]">
+            {loading ? "Loading your practice…" : stats.count === 0 ? "No sessions yet — run your first roleplay." : `You've run ${stats.count} ${stats.count === 1 ? "call" : "calls"} so far.`}
+          </p>
         </div>
-        <nav className="flex flex-col gap-1">
-          {NAV.map((n) => (
-            <Link
-              key={n.label}
-              href={n.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-[11px] text-[15px] font-medium transition-colors ${
-                n.active
-                  ? "border border-primary/30 bg-primary/[0.16] text-ink"
-                  : "text-muted hover:bg-white/5"
-              }`}
-            >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={n.active ? "#93C5FD" : "#8A90A0"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d={n.icon} />
-              </svg>
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
+      </Reveal>
 
-      {/* Main */}
-      <div className="flex flex-1 flex-col gap-8 px-12 py-10">
-        <header className="flex items-center justify-between">
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-[30px] font-semibold tracking-tight text-ink">Good afternoon, William</h1>
-            <p className="text-[15px] text-muted">You've run 12 calls this month · 3-day streak</p>
-          </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-full text-[16px] font-semibold text-white" style={{ backgroundImage: "linear-gradient(135deg,#06B6D4,#2563EB)" }}>
-            WK
-          </div>
-        </header>
-
-        {/* Hero CTA */}
-        <section
-          className="flex items-center justify-between overflow-hidden rounded-[22px] border border-primary/35 p-8"
+      {/* Hero CTA — double-bezel tray */}
+      <Reveal as="section" delay={80} className="bezel">
+        <div
+          className="flex flex-col items-start justify-between gap-8 overflow-hidden rounded-[22px] p-7 sm:p-8 md:flex-row md:items-center"
           style={{
-            backgroundColor: "rgba(20,22,29,0.5)",
             backgroundImage:
               "radial-gradient(60% 120% at 88% 20%, rgba(37,99,235,0.35), transparent 60%), radial-gradient(50% 120% at 100% 100%, rgba(124,92,255,0.25), transparent 60%)",
           }}
         >
           <div className="flex max-w-[560px] flex-col gap-4">
-            <span className="text-[13px] font-semibold tracking-[0.12em] text-[#93C5FD]">READY TO PRACTISE</span>
-            <h2 className="text-[28px] font-semibold leading-[34px] tracking-tight text-ink">
+            <span className="w-max rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#93C5FD]">Ready to practise</span>
+            <h2 className="text-[24px] font-semibold leading-[1.2] tracking-tight text-ink sm:text-[28px] sm:leading-[34px]">
               Run a live roleplay with an AI buyer and get scored in real time.
             </h2>
-            <Link
+            <Cta
               href="/setup"
-              className="mt-1 flex items-center gap-2.5 self-start rounded-full px-6 py-3.5 text-[15px] font-semibold text-white transition-transform hover:scale-[1.02]"
-              style={{ backgroundImage: "linear-gradient(135deg,#3B82F6,#2563EB)", boxShadow: "0 8px 30px rgba(37,99,235,0.45)" }}
+              className="mt-1"
+              icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z" /></svg>}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z" /></svg>
               Start new session
-            </Link>
+            </Cta>
           </div>
           <div
-            className="h-[150px] w-[150px] shrink-0 animate-blob-morph"
+            className="h-[130px] w-[130px] shrink-0 animate-blob-morph sm:h-[150px] sm:w-[150px]"
             style={{
               borderRadius: "47% 53% 55% 45% / 52% 46% 54% 48%",
               backgroundImage:
@@ -99,45 +72,51 @@ export default function Home() {
               boxShadow: "0 0 90px 12px rgba(37,99,235,0.55)",
             }}
           />
-        </section>
+        </div>
+      </Reveal>
 
-        {/* Stat tiles */}
-        <section className="flex gap-5">
-          {STATS.map((s) => (
-            <div key={s.label} className="flex flex-1 flex-col gap-2.5 rounded-[18px] border border-line bg-[rgba(20,22,29,0.5)] p-[22px]">
-              <span className="text-[13px] font-medium text-muted">{s.label}</span>
-              <span className="text-[34px] font-semibold tracking-tight text-ink">{s.value}</span>
-              <span className="text-[13px] font-medium" style={{ color: s.noteColor }}>{s.note}</span>
-            </div>
-          ))}
-        </section>
+      {/* Stat tiles */}
+      <section className="flex flex-col gap-5 sm:flex-row">
+        {TILES.map((s, i) => (
+          <Reveal
+            key={s.label}
+            delay={140 + i * 70}
+            className="flex flex-1 flex-col gap-2.5 rounded-[18px] border border-line bg-[rgba(20,22,29,0.5)] p-[22px] transition-colors duration-300 ease-spring hover:border-white/15"
+          >
+            <span className="text-[13px] font-medium text-muted">{s.label}</span>
+            <span className="text-[32px] font-semibold tracking-tight text-ink sm:text-[34px]">{s.value}</span>
+            <span className="text-[13px] font-medium" style={{ color: s.noteColor }}>{s.note}</span>
+          </Reveal>
+        ))}
+      </section>
 
-        {/* Recent sessions */}
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[17px] font-semibold text-ink">Recent sessions</h3>
-            <Link href="/" className="text-[14px] font-medium text-[#93C5FD]">View all</Link>
+      {/* Recent sessions */}
+      <section className="flex flex-col gap-4">
+        <Reveal className="flex items-center justify-between">
+          <h3 className="text-[17px] font-semibold text-ink">Recent sessions</h3>
+          <Link href="/history" className="text-[14px] font-medium text-[#93C5FD] transition-colors hover:text-[#BFDBFE]">View all</Link>
+        </Reveal>
+
+        {loading ? (
+          <div className="flex flex-col gap-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-[74px] animate-pulse rounded-[16px] border border-line bg-[rgba(20,22,29,0.4)]" />
+            ))}
           </div>
-          {SESSIONS.map((s) => (
-            <Link
-              key={s.role}
-              href="/report"
-              className="flex items-center gap-4 rounded-[16px] border border-line bg-[rgba(20,22,29,0.5)] px-5 py-4 transition-colors hover:bg-white/[0.04]"
-            >
-              <div className="h-10 w-10 shrink-0 rounded-xl" style={{ backgroundImage: s.grad }} />
-              <div className="flex flex-1 flex-col gap-[3px]">
-                <span className="text-[15px] font-semibold text-ink">{s.role}</span>
-                <span className="text-[13px] text-muted">{s.meta}</span>
-              </div>
-              <div className="flex w-16 shrink-0 flex-col items-end gap-0.5">
-                <span className="text-[22px] font-semibold" style={{ color: s.color }}>{s.score}</span>
-                <span className="text-[12px] font-medium text-muted">score</span>
-              </div>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M9 18l6-6-6-6" /></svg>
-            </Link>
-          ))}
-        </section>
-      </div>
-    </main>
+        ) : recent.length === 0 ? (
+          <Reveal className="flex flex-col items-center gap-3 rounded-[16px] border border-dashed border-line bg-[rgba(20,22,29,0.4)] px-6 py-12 text-center">
+            <p className="text-[15px] font-medium text-ink">No sessions yet</p>
+            <p className="max-w-[360px] text-[14px] text-muted">Your practice calls will appear here once you finish your first roleplay.</p>
+            <Cta href="/setup" variant="ghost" className="mt-1">Start your first</Cta>
+          </Reveal>
+        ) : (
+          recent.map((s, i) => (
+            <Reveal key={s.id} delay={i * 70}>
+              <SessionRow s={s} />
+            </Reveal>
+          ))
+        )}
+      </section>
+    </NavShell>
   );
 }

@@ -5,6 +5,9 @@
 :root {
   --background: #06080F;
   --foreground: #edeff4;
+  /* Spring-mass easing — used for every meaningful transition so motion reads
+     as physical, never mechanical. */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 html,
@@ -16,6 +19,13 @@ body {
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+/* Keyboard focus only — a crisp cobalt ring that follows each element's own
+   radius (box-shadow, so it never reshapes the element), never a muddy outline. */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #06080f, 0 0 0 4px rgba(59, 130, 246, 0.7);
 }
 
 @layer components {
@@ -44,5 +54,61 @@ body {
     background-color: rgba(20, 22, 29, 0.55);
     border: 1px solid #252a36;
     backdrop-filter: blur(12px);
+  }
+
+  /* Double-bezel (Doppelrand): an outer machined tray holding an inner glass
+     plate. Wrap a `.bezel-inner` in a `.bezel` for concentric, hardware-like
+     depth instead of a flat card on the background. */
+  .bezel {
+    padding: 6px;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  }
+  .bezel-inner {
+    height: 100%;
+    border-radius: 22px;
+    background-color: rgba(20, 22, 29, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Scroll-entry reveal: heavy fade-up with a brief blur, resolving on
+     .in-view (toggled by the useInView hook). Stagger via inline
+     transition-delay. GPU-only props. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    filter: blur(6px);
+    transition:
+      opacity 0.8s var(--ease-spring),
+      transform 0.8s var(--ease-spring),
+      filter 0.8s var(--ease-spring);
+    will-change: transform, opacity;
+  }
+  .reveal.in-view {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Respect users who ask for less motion: no reveal offsets, no ambient loops. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+  .animate-blob-morph,
+  .animate-gradient-flow,
+  .animate-ambient-pulse {
+    animation: none !important;
+  }
+  * {
+    scroll-behavior: auto !important;
   }
 }
