@@ -24,8 +24,8 @@ export function relDay(ts: number): string {
 // Score → traffic-light colour (null = not yet scored).
 export function scoreColor(s: number | null): string {
   if (s == null) return "#8A90A0";
-  if (s >= 80) return "#22C55E";
-  if (s >= 70) return "#F59E0B";
+  if (s >= 8) return "#22C55E";
+  if (s >= 7) return "#F59E0B";
   return "#EF4444";
 }
 

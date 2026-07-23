@@ -1,4 +1,5 @@
 import type { SessionConfig, TranscriptEntry, Report } from "./types";
+import { isCurrentReport } from "./report";
 
 // Client-side seam to the persistence API. The config handoff (setup -> call) is
 // an in-flight, client-only value and stays SYNCHRONOUS via sessionStorage. The
@@ -82,7 +83,16 @@ export async function saveSession(session: StoredSession): Promise<string> {
   }
 
   const id = `local-${uuid()}`;
-  stashLocal({ ...session, id });
+  const localSession = { ...session, id };
+  // Preserve the call first, then make a best-effort scoring attempt that does
+  // not depend on database availability. If it fails, the report page exposes
+  // the same retry action without losing the transcript.
+  stashLocal(localSession);
+  try {
+    await retrySessionScoring(localSession);
+  } catch {
+    /* explicit retry remains available on the report page */
+  }
   setLastId(id);
   return id;
 }
@@ -102,6 +112,39 @@ export async function loadSession(id?: string): Promise<StoredSession | null> {
     }
   }
   return readLocal(sid);
+}
+
+// Re-run scoring for a session whose save-time evaluation failed. Database
+// sessions are loaded and updated server-side; local fallback sessions send the
+// config/transcript they already hold in the browser.
+export async function retrySessionScoring(
+  session: StoredSession
+): Promise<Report> {
+  if (!session.id) throw new Error("This session has no id.");
+
+  const local = session.id.startsWith("local-");
+  const res = await fetch(
+    `/api/sessions/${encodeURIComponent(session.id)}/score`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        local
+          ? { config: session.config, transcript: session.transcript }
+          : {}
+      ),
+    }
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    report?: Report;
+    error?: string;
+  };
+  if (!res.ok || !isCurrentReport(data.report)) {
+    throw new Error(data.error ?? "Scoring failed. Please try again.");
+  }
+
+  stashLocal({ ...session, report: data.report });
+  return data.report;
 }
 
 // ⚠️ ASYNC — callers must `await`. Lists past sessions for the history/progress
@@ -146,7 +189,11 @@ function stashLocal(session: StoredSession): void {
 function readLocal(id: string): StoredSession | null {
   try {
     const raw = localStorage.getItem(LOCAL_PREFIX + id);
-    return raw ? (JSON.parse(raw) as StoredSession) : null;
+    if (!raw) return null;
+    const session = JSON.parse(raw) as StoredSession;
+    return session.report && !isCurrentReport(session.report)
+      ? { ...session, report: undefined }
+      : session;
   } catch {
     return null;
   }

@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import type { SessionConfig, TranscriptEntry, Report } from "./types";
+import { isCurrentReport } from "./report";
 
 // Server-only. Talks to Neon (Vercel Postgres) over HTTP. The connection string
 // comes from the environment — Vercel's Neon integration provides DATABASE_URL
@@ -100,11 +101,24 @@ export async function getSession(id: string): Promise<SessionRow | null> {
     id: r.id as string,
     config: r.config as SessionConfig,
     transcript: r.transcript as TranscriptEntry[],
-    report: (r.report as Report | null) ?? null,
+    report: isCurrentReport(r.report) ? r.report : null,
     endedAt: Number(r.ended_at),
     durationMs: Number(r.duration_ms),
     createdAt: String(r.created_at),
   };
+}
+
+export async function updateSessionReport(
+  id: string,
+  report: Report
+): Promise<void> {
+  if (!sql) throw new Error("Database is not configured.");
+  await ensureSchema();
+  await sql`
+    UPDATE sessions
+    SET report = ${JSON.stringify(report)}
+    WHERE id = ${id}
+  `;
 }
 
 export async function listSessions(limit = 50): Promise<SessionSummary[]> {
@@ -116,7 +130,7 @@ export async function listSessions(limit = 50): Promise<SessionSummary[]> {
   `) as Record<string, unknown>[];
   return rows.map((r) => {
     const config = r.config as SessionConfig;
-    const report = r.report as Report | null;
+    const report = isCurrentReport(r.report) ? r.report : null;
     return {
       id: r.id as string,
       endedAt: Number(r.ended_at),

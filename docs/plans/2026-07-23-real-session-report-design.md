@@ -12,8 +12,8 @@ recovery path when scoring did not complete.
 3. The report page loads the selected session by id and renders only its stored
    report values.
 4. If a report is missing, the page keeps the real session metadata and
-   transcript visible, explicitly marks the session as unscored, and offers a
-   retry.
+   transcript visible, explicitly marks the session as unscored, automatically
+   retries once, and offers a manual retry if recovery still fails.
 5. A retry scores the stored transcript and persists the resulting report. For
    local fallback sessions, the client sends its stored config/transcript and
    stores the returned report locally.

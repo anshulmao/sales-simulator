@@ -79,7 +79,7 @@ export default function Progress() {
                   <div key={s.id} className="group relative flex flex-1 flex-col items-center justify-end gap-2">
                     <div
                       className="w-full rounded-t-md transition-all duration-700 ease-spring"
-                      style={{ height: `${Math.max(6, v)}%`, backgroundColor: scoreColor(v) }}
+                      style={{ height: `${Math.max(6, v * 10)}%`, backgroundColor: scoreColor(v) }}
                     />
                     <span className="text-[11px] font-medium text-muted">{v}</span>
                     <span className="pointer-events-none absolute -top-8 whitespace-nowrap rounded-md border border-line bg-[#0B0D13] px-2 py-1 text-[11px] text-ink opacity-0 transition-opacity group-hover:opacity-100">
