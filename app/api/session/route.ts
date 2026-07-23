@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buyerSessionConfig, buildInstructions } from "@/lib/buyerPersona";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // Server-only. Holds the real API key and mints a short-lived ephemeral client
 // secret for the browser. The key must NEVER reach the client.
@@ -10,7 +11,22 @@ export const runtime = "nodejs";
 
 const MODEL = "gpt-realtime-2.1";
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Money-guard: cap sessions per IP so a stuck retry loop in another lane's code
+  // can't silently burn OpenAI credits. Not security — just a runaway backstop.
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const limit = checkRateLimit(ip);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many sessions started. Try again in a bit." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds ?? 3600) },
+      }
+    );
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

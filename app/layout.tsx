@@ -13,7 +13,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject
+          attributes into <body> before React hydrates. This tolerates those
+          attribute-only diffs without masking real hydration bugs elsewhere. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
