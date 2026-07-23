@@ -61,18 +61,20 @@ function CallScreen({ config }: { config: SessionConfig }) {
     start();
   };
 
-  // Phase 3 -> 4 seam: capture the completed transcript, stash the finished
-  // session, and hand off to the report. We do NOT score here — that's the
-  // evaluation model's job (teammate B).
-  const handleEnd = () => {
+  // Phase 3 -> 4 seam: capture the completed transcript, persist the finished
+  // session, and hand off to the report. saveSession is now ASYNC — it POSTs to
+  // the DB, which also scores the call at save time — so we await the new id and
+  // navigate to that specific report. (Scoring adds a few seconds; the screen
+  // shows "Call ended" meanwhile, and the controls are already gone.)
+  const handleEnd = async () => {
     const finalTranscript = endCall();
-    saveSession({
+    const id = await saveSession({
       config,
       transcript: finalTranscript,
       endedAt: Date.now(),
       durationMs: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
     });
-    router.push("/report");
+    router.push(`/report?id=${encodeURIComponent(id)}`);
   };
 
   // Keep the transcript scrolled to the latest line.
