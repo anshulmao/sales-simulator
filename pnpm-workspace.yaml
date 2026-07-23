@@ -1,0 +1,4 @@
+# Allow sharp (Next.js image-optimization native dep) to run its build script.
+# Without this, pnpm's pre-run dependency check fails and `pnpm dev` won't start.
+allowBuilds:
+  sharp: true
