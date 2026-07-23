@@ -1,5 +1,8 @@
-// Locked contracts. Other lanes build against these exact shapes — do not modify.
+// Shared data contracts — LOCKED across frontend / backend / AI layer.
+// Do not change these shapes without coordinating; other people build against them.
 
+// Produced by Phase 2 (setup), consumed by the session token route.
+// This session hardcodes an instance in lib/buyerPersona.ts.
 export type SessionConfig = {
   persona: {
     role: string;
@@ -7,16 +10,13 @@ export type SessionConfig = {
     behaviour: string;
     resistance: "low" | "medium" | "high";
   };
-  scenario: {
-    salesStage: string;
-    repGoal: string;
-  };
+  scenario: { salesStage: string; repGoal: string };
   voice: string;
 };
 
-// Produced by the FRONTEND from OpenAI Realtime events. It lives here only so the
-// backend understands the downstream shape and never emits OpenAI's `assistant`
-// vocabulary anywhere. The buyer's turns are labelled `buyer`, never `assistant`.
+// Produced by the call screen, consumed by Phase 4 scoring.
+// The single most important contract in the product — clean structured data,
+// NOT strings formatted for display. Rendering is the component's job.
 export type TranscriptEntry = {
   role: "user" | "buyer";
   text: string;
