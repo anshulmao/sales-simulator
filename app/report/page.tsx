@@ -58,7 +58,13 @@ const SAMPLE_META = "VP of Operations · Discovery · High resistance · 8 min 0
 export default function Report() {
   const [session, setSession] = useState<StoredSession | null | undefined>(undefined);
   const [animate, setAnimate] = useState(false);
-  useEffect(() => setSession(loadSession()), []);
+  // loadSession is now async (DB-backed). Read the id the call screen navigated
+  // with (?id=…); with no id it falls back to the last saved session.
+  useEffect(() => {
+    const id =
+      new URLSearchParams(window.location.search).get("id") ?? undefined;
+    loadSession(id).then(setSession);
+  }, []);
   // Kick meter fills on the next frame so the width transition actually runs.
   useEffect(() => {
     const id = requestAnimationFrame(() => setAnimate(true));
