@@ -13,6 +13,7 @@ import { isCurrentReport } from "./report";
 const CONFIG_KEY = "salescoach:sessionConfig";
 const LAST_ID_KEY = "salescoach:lastSessionId";
 const LOCAL_PREFIX = "salescoach:session:"; // one entry per fallback record
+const TELEPROMPTER_KEY = "salescoach:teleprompterEnabled";
 
 // --- Phase 2 -> 3: the config that starts a call (sync, client-only) ---
 export function saveSessionConfig(config: SessionConfig): void {
@@ -29,6 +30,25 @@ export function loadSessionConfig(): SessionConfig | null {
     return raw ? (JSON.parse(raw) as SessionConfig) : null;
   } catch {
     return null;
+  }
+}
+
+// UI-only session preference. Kept out of SessionConfig because that contract
+// is shared with the buyer and report flows.
+export function saveTeleprompterPreference(enabled: boolean): void {
+  try {
+    sessionStorage.setItem(TELEPROMPTER_KEY, enabled ? "true" : "false");
+  } catch {
+    /* sessionStorage unavailable — call screen defaults to enabled */
+  }
+}
+
+export function loadTeleprompterPreference(): boolean {
+  try {
+    const stored = sessionStorage.getItem(TELEPROMPTER_KEY);
+    return stored === null ? true : stored === "true";
+  } catch {
+    return true;
   }
 }
 
