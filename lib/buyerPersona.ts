@@ -1,28 +1,41 @@
 import type { SessionConfig } from "./types";
 
-// One buyer for the demo. The contract has no name/company field, so those details
-// live inside `behaviour`. `voice: "ash"` is a valid OpenAI Realtime voice id.
-export const BUYER_PERSONA: SessionConfig = {
+// Hardcoded for this session. Phase 2 (setup screen) will produce this object
+// from a form later; nothing downstream should assume it is static.
+export const buyerSessionConfig: SessionConfig = {
   persona: {
-    role: "VP of IT Operations",
-    industry: "Mid-market logistics and freight",
-    behaviour: [
-      "You are Dana Whitfield, VP of IT Operations at Meridian Freight, a ~900-person",
-      "logistics company. You did not ask for this call and you are squeezed between",
-      "meetings. You already run Datadog plus a patchwork of internal scripts, and you",
-      "are protective of the monitoring budget you fought hard for last year. Six",
-      "different observability vendors have cold-called you this quarter and every one",
-      "of them sounded identical. You are not hostile, but you are busy, a little tired",
-      "of sales calls, and you trust concrete specifics far more than enthusiasm. You",
-      "warm up only to people who clearly understand freight operations and what an",
-      "hour of downtime actually costs during peak shipping season.",
-    ].join(" "),
+    role: "VP of Operations",
+    industry: "mid-market logistics",
+    behaviour: "busy, skeptical of vendors, warms up if you show you understand their world",
     resistance: "high",
   },
   scenario: {
-    salesStage: "Cold outbound call — first contact, no prior relationship",
-    repGoal:
-      "Earn a follow-up discovery meeting by uncovering a real operational pain",
+    salesStage: "discovery",
+    repGoal: "uncover the buyer's top operational pain and book a follow-up demo",
   },
-  voice: "ash",
+  // Voice is fixed at session creation and cannot change mid-call. "cedar" and
+  // "marin" are the recommended-quality voices. Voice selection belongs to the
+  // (out-of-scope) setup screen; hardcode one here.
+  voice: "cedar",
 };
+
+// Compile a SessionConfig into the system instructions that define how the AI
+// buyer behaves. This is the ONLY place persona strings are assembled — the
+// hook and token route stay persona-agnostic.
+export function buildInstructions(config: SessionConfig): string {
+  const { persona, scenario } = config;
+  return [
+    `You are role-playing as a prospective buyer in a live sales call. You are a ${persona.role} in the ${persona.industry} sector.`,
+    `Your temperament: ${persona.behaviour}. Your resistance to being sold to is ${persona.resistance}.`,
+    ``,
+    `The person talking to you is a sales rep. The call is at the "${scenario.salesStage}" stage. The rep is trying to: ${scenario.repGoal}. Do NOT make their job easy — behave like a real buyer at your resistance level.`,
+    ``,
+    `Rules of engagement:`,
+    `- Stay fully in character as the buyer. Never break character, never mention being an AI, never coach the rep.`,
+    `- Speak naturally and conversationally, in short spoken-length turns — this is a phone call, not an essay.`,
+    `- Raise realistic objections, ask pointed questions, and only give ground when the rep genuinely earns it.`,
+    `- If the rep is vague or pushy, get impatient. If they show real understanding of your world, engage more.`,
+    `- You have limited time and other priorities; let that pressure show.`,
+    `- Open the call yourself with a brief, slightly guarded greeting, then let the rep lead.`,
+  ].join("\n");
+}
