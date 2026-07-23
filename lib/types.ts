@@ -3,14 +3,35 @@
 
 // Produced by Phase 2 (setup), consumed by the session token route.
 // This session hardcodes an instance in lib/buyerPersona.ts.
+//
+// The `?`-marked fields are ADDITIVE and OPTIONAL: setup captures them and they
+// flow to the model, but buildInstructions (AI lane) only shapes behaviour with
+// them once it references them. Optional = existing configs stay valid, so this
+// change cannot break the backend or AI code that predates it.
 export type SessionConfig = {
   persona: {
     role: string;
     industry: string;
     behaviour: string;
     resistance: "low" | "medium" | "high";
+    engagementHistory?: string; // summary of prior calls → warm vs cold open
   };
-  scenario: { salesStage: string; repGoal: string };
+  scenario: {
+    salesStage: string;
+    repGoal: string;
+    environment?: string; // "cold call" | "booked demo" | "inbound enquiry" …
+  };
+  seller?: {
+    salesExperience?: string; // tunes buyer difficulty / coaching level
+  };
+  company?: {
+    // What the rep sells — gives the buyer realistic material to object to.
+    product?: string;
+    brand?: string;
+    marketPositioning?: string;
+    salesPlaybook?: string;
+  };
+  sessionType?: "one-off" | "pipeline";
   voice: string;
 };
 
