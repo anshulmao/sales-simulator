@@ -3,12 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeSession } from "@/hooks/useRealtimeSession";
+import { useLiveCoach } from "@/hooks/useLiveCoach";
 import { buyerSessionConfig } from "@/lib/buyerPersona";
-import { loadSessionConfig, saveSession } from "@/lib/sessionStore";
+import {
+  loadSessionConfig,
+  loadTeleprompterPreference,
+  saveSession,
+  saveTeleprompterPreference,
+} from "@/lib/sessionStore";
 import type { SessionConfig } from "@/lib/types";
 import { Orb } from "@/components/call/Orb";
 import { CallControls } from "@/components/call/CallControls";
 import { InstructionsPanel } from "@/components/call/InstructionsPanel";
+import { Teleprompter } from "@/components/call/Teleprompter";
 import { BackLink } from "@/components/nav/BackLink";
 import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
@@ -24,11 +31,16 @@ const SPEAKER_LABEL: Record<string, string> = {
 // hook is created exactly once with a stable config.
 export default function CallPage() {
   const [config, setConfig] = useState<SessionConfig | null>(null);
+  const [initialTeleprompterEnabled, setInitialTeleprompterEnabled] = useState<
+    boolean | null
+  >(null);
+
   useEffect(() => {
     setConfig(loadSessionConfig() ?? buyerSessionConfig);
+    setInitialTeleprompterEnabled(loadTeleprompterPreference());
   }, []);
 
-  if (!config) {
+  if (!config || initialTeleprompterEnabled === null) {
     return (
       <main className="mesh-bg relative flex min-h-[100dvh] flex-col items-center justify-center gap-4">
         <BackLink
@@ -41,18 +53,33 @@ export default function CallPage() {
       </main>
     );
   }
-  return <CallScreen config={config} />;
+  return (
+    <CallScreen
+      config={config}
+      initialTeleprompterEnabled={initialTeleprompterEnabled}
+    />
+  );
 }
 
-function CallScreen({ config }: { config: SessionConfig }) {
+function CallScreen({
+  config,
+  initialTeleprompterEnabled,
+}: {
+  config: SessionConfig;
+  initialTeleprompterEnabled: boolean;
+}) {
   const router = useRouter();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [teleprompterEnabled, setTeleprompterEnabled] = useState(
+    initialTeleprompterEnabled
+  );
   const {
     status,
     error,
     speaker,
     transcript,
+    completedBuyerTurnId,
     isMuted,
     localAnalyser,
     remoteAnalyser,
@@ -60,6 +87,18 @@ function CallScreen({ config }: { config: SessionConfig }) {
     toggleMute,
     endCall,
   } = useRealtimeSession(config);
+  const {
+    suggestion,
+    phase: coachPhase,
+    retry: retryCoach,
+  } = useLiveCoach({
+    config,
+    transcript,
+    completedBuyerTurnId,
+    status,
+    speaker,
+    enabled: teleprompterEnabled,
+  });
 
   // Stamp when the call actually began so the report can show a duration.
   const startedAtRef = useRef<number>(0);
@@ -88,6 +127,14 @@ function CallScreen({ config }: { config: SessionConfig }) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleTeleprompterToggle = () => {
+    setTeleprompterEnabled((enabled) => {
+      const next = !enabled;
+      saveTeleprompterPreference(next);
+      return next;
+    });
   };
 
   // Keep the transcript scrolled to the latest line.
@@ -138,7 +185,10 @@ function CallScreen({ config }: { config: SessionConfig }) {
 
   return (
     <main className="mesh-bg flex min-h-[100dvh] flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:p-10">
-      <Reveal as="div" className="flex flex-col gap-4 lg:w-auto">
+      <Reveal
+        as="div"
+        className="order-2 flex flex-col gap-4 lg:order-none lg:w-auto"
+      >
         {isSaving ? (
           <span className="flex w-max items-center gap-2.5 py-1 text-[14px] font-medium text-muted">
             <span className="h-2 w-2 animate-ambient-pulse rounded-full bg-primary" />
@@ -153,9 +203,24 @@ function CallScreen({ config }: { config: SessionConfig }) {
         <InstructionsPanel config={config} />
       </Reveal>
 
-      <Reveal as="section" delay={80} className="flex flex-1 flex-col items-center justify-between gap-6 rounded-2xl glass p-6">
+      <Reveal
+        as="section"
+        delay={80}
+        className="order-1 relative flex min-w-0 flex-1 flex-col items-center justify-between gap-5 rounded-2xl glass p-4 sm:p-6 lg:order-none"
+      >
+        <div className="flex min-h-[52px] w-full shrink-0 justify-center">
+          <Teleprompter
+            enabled={teleprompterEnabled}
+            status={status}
+            suggestion={suggestion}
+            phase={coachPhase}
+            onToggle={handleTeleprompterToggle}
+            onRetry={retryCoach}
+          />
+        </div>
+
         {/* Orb + status */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-5">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3">
           <Orb
             speaker={speaker}
             status={status}
@@ -210,7 +275,11 @@ function CallScreen({ config }: { config: SessionConfig }) {
       </Reveal>
 
       {/* Live transcript */}
-      <Reveal as="aside" delay={160} className="flex w-full flex-col rounded-2xl glass p-5 lg:max-w-sm">
+      <Reveal
+        as="aside"
+        delay={160}
+        className="order-3 flex w-full flex-col rounded-2xl glass p-5 lg:order-none lg:max-w-sm"
+      >
         <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
           Transcript
         </h2>

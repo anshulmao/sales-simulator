@@ -8,7 +8,10 @@ import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
 import { BackLink } from "@/components/nav/BackLink";
 import type { SessionConfig } from "@/lib/types";
-import { saveSessionConfig } from "@/lib/sessionStore";
+import {
+  saveSessionConfig,
+  saveTeleprompterPreference,
+} from "@/lib/sessionStore";
 
 type Tone = "primary" | "danger";
 
@@ -84,6 +87,48 @@ function TextField({
   );
 }
 
+function TeleprompterToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 rounded-[14px] border border-line bg-[rgba(10,11,16,0.34)] px-[18px] py-4">
+      <div className="flex flex-col gap-1">
+        <span className="text-[14px] font-semibold text-ink">
+          Live teleprompter
+        </span>
+        <span className="text-[13px] leading-5 text-muted">
+          Get one context-aware line at a time during the call.
+        </span>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        onClick={() => onChange(!enabled)}
+        className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+          enabled
+            ? "border-primary bg-primary"
+            : "border-white/20 bg-white/10"
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`absolute left-0 top-1 h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform ${
+            enabled ? "translate-x-[25px]" : "translate-x-1"
+          }`}
+        />
+        <span className="sr-only">
+          {enabled ? "Disable live teleprompter" : "Enable live teleprompter"}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 // Behaviour is an independent persona axis (not derived from resistance): each
 // trait maps to a temperament sentence that lands directly in the AI buyer's
 // system prompt via persona.behaviour.
@@ -120,6 +165,7 @@ export default function Setup() {
   const [goal, setGoal] = useState(
     "Uncover their top operational pain and book a follow-up demo"
   );
+  const [teleprompterEnabled, setTeleprompterEnabled] = useState(true);
   // Optional context — enriches the buyer / scorer when provided
   const [salesExperience, setSalesExperience] = useState("");
   const [product, setProduct] = useState("");
@@ -161,6 +207,7 @@ export default function Setup() {
       voice: VOICES[voiceLabel] ?? "cedar",
     };
     saveSessionConfig(config);
+    saveTeleprompterPreference(teleprompterEnabled);
     router.push("/call");
   }
 
@@ -188,6 +235,10 @@ export default function Setup() {
             <ChipField label="Sales stage" value={stage} onChange={setStage} options={["Prospecting", "Discovery", "Objection handling", "Closing"]} />
             <ChipField label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENTS} />
             <ChipField label="Buyer voice" value={voiceLabel} onChange={setVoiceLabel} options={Object.keys(VOICES)} />
+            <TeleprompterToggle
+              enabled={teleprompterEnabled}
+              onChange={setTeleprompterEnabled}
+            />
             <TextField id="goal" label="Your goal for this call" value={goal} onChange={setGoal} placeholder="e.g. Uncover their top pain and book a follow-up demo" />
             {!canStart && <span className="-mt-4 text-[13px] text-warning/90">Add a goal so the buyer knows what you&apos;re working toward.</span>}
 

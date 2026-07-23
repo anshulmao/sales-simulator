@@ -23,6 +23,9 @@ export function useRealtimeSession(config: SessionConfig) {
   const [error, setError] = useState<string | null>(null);
   const [speaker, setSpeaker] = useState<Speaker>("silent");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [completedBuyerTurnId, setCompletedBuyerTurnId] = useState<string | null>(
+    null
+  );
   const [isMuted, setIsMuted] = useState(false);
   const [localAnalyser, setLocalAnalyser] = useState<AnalyserNode | null>(null);
   const [remoteAnalyser, setRemoteAnalyser] = useState<AnalyserNode | null>(null);
@@ -110,7 +113,15 @@ export function useRealtimeSession(config: SessionConfig) {
           if (evt.item_id) upsertTranscript(evt.item_id, "buyer", evt.delta ?? "", "append");
           break;
         case "response.output_audio_transcript.done":
-          if (evt.item_id) upsertTranscript(evt.item_id, "buyer", evt.transcript ?? "", "replace");
+          if (evt.item_id) {
+            upsertTranscript(
+              evt.item_id,
+              "buyer",
+              evt.transcript ?? "",
+              "replace"
+            );
+            setCompletedBuyerTurnId(evt.item_id);
+          }
           break;
 
         case "error":
@@ -149,6 +160,7 @@ export function useRealtimeSession(config: SessionConfig) {
 
     setLocalAnalyser(null);
     setRemoteAnalyser(null);
+    setCompletedBuyerTurnId(null);
     startedRef.current = false;
   }, []);
 
@@ -167,7 +179,12 @@ export function useRealtimeSession(config: SessionConfig) {
         }, startAt)
       );
       mockTimersRef.current.push(
-        setTimeout(() => setSpeaker("silent"), endAt)
+        setTimeout(() => {
+          setSpeaker("silent");
+          if (line.role === "buyer") {
+            setCompletedBuyerTurnId(id);
+          }
+        }, endAt)
       );
       delay = endAt + 400;
     });
@@ -183,6 +200,7 @@ export function useRealtimeSession(config: SessionConfig) {
 
     setError(null);
     setTranscript([]);
+    setCompletedBuyerTurnId(null);
     setStatus("connecting");
 
     if (USE_MOCK) {
@@ -331,6 +349,7 @@ export function useRealtimeSession(config: SessionConfig) {
     error,
     speaker,
     transcript,
+    completedBuyerTurnId,
     isMuted,
     localAnalyser,
     remoteAnalyser,
