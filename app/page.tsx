@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Cta } from "@/components/ui/Cta";
+import { Reveal } from "@/components/ui/Reveal";
 
 const NAV = [
   { label: "Home", href: "/", active: true, icon: "M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z" },
@@ -19,34 +21,42 @@ const STATS = [
   { label: "Talk / listen ratio", value: "43/57", note: "Healthy balance", noteColor: "#22C55E" },
 ];
 
+function Logo() {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className="h-[34px] w-[34px] rounded-[11px]"
+        style={{
+          backgroundImage:
+            "radial-gradient(60% 60% at 35% 30%,#93C5FD,rgba(147,197,253,0)), linear-gradient(135deg,#2563EB,#1E3A8A)",
+          boxShadow: "0 0 24px 2px rgba(37,99,235,0.5)",
+        }}
+      />
+      <span className="text-[17px] font-semibold tracking-tight text-ink">Salescoach</span>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
-    <main className="mesh-bg flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="flex w-[248px] shrink-0 flex-col gap-8 border-r border-line bg-[rgba(20,22,29,0.55)] px-5 py-7">
-        <div className="flex items-center gap-3 px-2">
-          <div
-            className="h-[34px] w-[34px] rounded-[11px]"
-            style={{
-              backgroundImage:
-                "radial-gradient(60% 60% at 35% 30%,#93C5FD,rgba(147,197,253,0)), linear-gradient(135deg,#2563EB,#1E3A8A)",
-              boxShadow: "0 0 24px 2px rgba(37,99,235,0.5)",
-            }}
-          />
-          <span className="text-[17px] font-semibold tracking-tight text-ink">Salescoach</span>
+    <main className="mesh-bg flex min-h-[100dvh]">
+      {/* Sidebar — desktop only */}
+      <aside className="hidden w-[248px] shrink-0 flex-col gap-8 border-r border-line bg-[rgba(20,22,29,0.55)] px-5 py-7 backdrop-blur-xl lg:flex">
+        <div className="px-2">
+          <Logo />
         </div>
         <nav className="flex flex-col gap-1">
           {NAV.map((n) => (
             <Link
               key={n.label}
               href={n.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-[11px] text-[15px] font-medium transition-colors ${
+              className={`group flex items-center gap-3 rounded-xl px-3 py-[11px] text-[15px] font-medium transition-all duration-300 ease-spring ${
                 n.active
                   ? "border border-primary/30 bg-primary/[0.16] text-ink"
-                  : "text-muted hover:bg-white/5"
+                  : "border border-transparent text-muted hover:translate-x-0.5 hover:bg-white/5 hover:text-ink"
               }`}
             >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={n.active ? "#93C5FD" : "#8A90A0"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={n.active ? "#93C5FD" : "#8A90A0"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="transition-colors group-hover:stroke-[#B4B9C6]">
                 <path d={n.icon} />
               </svg>
               {n.label}
@@ -56,85 +66,96 @@ export default function Home() {
       </aside>
 
       {/* Main */}
-      <div className="flex flex-1 flex-col gap-8 px-12 py-10">
-        <header className="flex items-center justify-between">
+      <div className="flex flex-1 flex-col gap-8 px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+        {/* Mobile brand strip */}
+        <div className="flex items-center justify-between lg:hidden">
+          <Logo />
+          <div className="flex h-11 w-11 items-center justify-center rounded-full text-[16px] font-semibold text-white" style={{ backgroundImage: "linear-gradient(135deg,#06B6D4,#2563EB)" }}>WK</div>
+        </div>
+
+        <Reveal as="header" className="flex items-center justify-between">
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-[30px] font-semibold tracking-tight text-ink">Good afternoon, William</h1>
-            <p className="text-[15px] text-muted">You've run 12 calls this month · 3-day streak</p>
+            <h1 className="text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">Good afternoon, William</h1>
+            <p className="text-[14px] text-muted sm:text-[15px]">You&apos;ve run 12 calls this month · 3-day streak</p>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-full text-[16px] font-semibold text-white" style={{ backgroundImage: "linear-gradient(135deg,#06B6D4,#2563EB)" }}>
+          <div className="hidden h-11 w-11 items-center justify-center rounded-full text-[16px] font-semibold text-white lg:flex" style={{ backgroundImage: "linear-gradient(135deg,#06B6D4,#2563EB)" }}>
             WK
           </div>
-        </header>
+        </Reveal>
 
-        {/* Hero CTA */}
-        <section
-          className="flex items-center justify-between overflow-hidden rounded-[22px] border border-primary/35 p-8"
-          style={{
-            backgroundColor: "rgba(20,22,29,0.5)",
-            backgroundImage:
-              "radial-gradient(60% 120% at 88% 20%, rgba(37,99,235,0.35), transparent 60%), radial-gradient(50% 120% at 100% 100%, rgba(124,92,255,0.25), transparent 60%)",
-          }}
-        >
-          <div className="flex max-w-[560px] flex-col gap-4">
-            <span className="text-[13px] font-semibold tracking-[0.12em] text-[#93C5FD]">READY TO PRACTISE</span>
-            <h2 className="text-[28px] font-semibold leading-[34px] tracking-tight text-ink">
-              Run a live roleplay with an AI buyer and get scored in real time.
-            </h2>
-            <Link
-              href="/setup"
-              className="mt-1 flex items-center gap-2.5 self-start rounded-full px-6 py-3.5 text-[15px] font-semibold text-white transition-transform hover:scale-[1.02]"
-              style={{ backgroundImage: "linear-gradient(135deg,#3B82F6,#2563EB)", boxShadow: "0 8px 30px rgba(37,99,235,0.45)" }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z" /></svg>
-              Start new session
-            </Link>
-          </div>
+        {/* Hero CTA — double-bezel tray */}
+        <Reveal as="section" delay={80} className="bezel">
           <div
-            className="h-[150px] w-[150px] shrink-0 animate-blob-morph"
+            className="flex flex-col items-start justify-between gap-8 overflow-hidden rounded-[22px] p-7 sm:p-8 md:flex-row md:items-center"
             style={{
-              borderRadius: "47% 53% 55% 45% / 52% 46% 54% 48%",
               backgroundImage:
-                "radial-gradient(42% 40% at 34% 28%, #DBEAFE 0%, rgba(219,234,254,0) 62%), radial-gradient(90% 90% at 50% 52%, #2563EB 0%, #1E3A8A 100%)",
-              boxShadow: "0 0 90px 12px rgba(37,99,235,0.55)",
+                "radial-gradient(60% 120% at 88% 20%, rgba(37,99,235,0.35), transparent 60%), radial-gradient(50% 120% at 100% 100%, rgba(124,92,255,0.25), transparent 60%)",
             }}
-          />
-        </section>
+          >
+            <div className="flex max-w-[560px] flex-col gap-4">
+              <span className="w-max rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#93C5FD]">Ready to practise</span>
+              <h2 className="text-[24px] font-semibold leading-[1.2] tracking-tight text-ink sm:text-[28px] sm:leading-[34px]">
+                Run a live roleplay with an AI buyer and get scored in real time.
+              </h2>
+              <Cta
+                href="/setup"
+                className="mt-1"
+                icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z" /></svg>}
+              >
+                Start new session
+              </Cta>
+            </div>
+            <div
+              className="h-[130px] w-[130px] shrink-0 animate-blob-morph sm:h-[150px] sm:w-[150px]"
+              style={{
+                borderRadius: "47% 53% 55% 45% / 52% 46% 54% 48%",
+                backgroundImage:
+                  "radial-gradient(42% 40% at 34% 28%, #DBEAFE 0%, rgba(219,234,254,0) 62%), radial-gradient(90% 90% at 50% 52%, #2563EB 0%, #1E3A8A 100%)",
+                boxShadow: "0 0 90px 12px rgba(37,99,235,0.55)",
+              }}
+            />
+          </div>
+        </Reveal>
 
         {/* Stat tiles */}
-        <section className="flex gap-5">
-          {STATS.map((s) => (
-            <div key={s.label} className="flex flex-1 flex-col gap-2.5 rounded-[18px] border border-line bg-[rgba(20,22,29,0.5)] p-[22px]">
+        <section className="flex flex-col gap-5 sm:flex-row">
+          {STATS.map((s, i) => (
+            <Reveal
+              key={s.label}
+              delay={140 + i * 70}
+              className="flex flex-1 flex-col gap-2.5 rounded-[18px] border border-line bg-[rgba(20,22,29,0.5)] p-[22px] transition-colors duration-300 ease-spring hover:border-white/15"
+            >
               <span className="text-[13px] font-medium text-muted">{s.label}</span>
-              <span className="text-[34px] font-semibold tracking-tight text-ink">{s.value}</span>
+              <span className="text-[32px] font-semibold tracking-tight text-ink sm:text-[34px]">{s.value}</span>
               <span className="text-[13px] font-medium" style={{ color: s.noteColor }}>{s.note}</span>
-            </div>
+            </Reveal>
           ))}
         </section>
 
         {/* Recent sessions */}
         <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <Reveal className="flex items-center justify-between">
             <h3 className="text-[17px] font-semibold text-ink">Recent sessions</h3>
-            <Link href="/" className="text-[14px] font-medium text-[#93C5FD]">View all</Link>
-          </div>
-          {SESSIONS.map((s) => (
-            <Link
-              key={s.role}
-              href="/report"
-              className="flex items-center gap-4 rounded-[16px] border border-line bg-[rgba(20,22,29,0.5)] px-5 py-4 transition-colors hover:bg-white/[0.04]"
-            >
-              <div className="h-10 w-10 shrink-0 rounded-xl" style={{ backgroundImage: s.grad }} />
-              <div className="flex flex-1 flex-col gap-[3px]">
-                <span className="text-[15px] font-semibold text-ink">{s.role}</span>
-                <span className="text-[13px] text-muted">{s.meta}</span>
-              </div>
-              <div className="flex w-16 shrink-0 flex-col items-end gap-0.5">
-                <span className="text-[22px] font-semibold" style={{ color: s.color }}>{s.score}</span>
-                <span className="text-[12px] font-medium text-muted">score</span>
-              </div>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M9 18l6-6-6-6" /></svg>
-            </Link>
+            <Link href="/" className="text-[14px] font-medium text-[#93C5FD] transition-colors hover:text-[#BFDBFE]">View all</Link>
+          </Reveal>
+          {SESSIONS.map((s, i) => (
+            <Reveal key={s.role} delay={i * 70} as="div">
+              <Link
+                href="/report"
+                className="group flex items-center gap-4 rounded-[16px] border border-line bg-[rgba(20,22,29,0.5)] px-5 py-4 transition-all duration-300 ease-spring hover:border-white/15 hover:bg-white/[0.04]"
+              >
+                <div className="h-10 w-10 shrink-0 rounded-xl transition-transform duration-500 ease-spring group-hover:scale-105" style={{ backgroundImage: s.grad }} />
+                <div className="flex flex-1 flex-col gap-[3px]">
+                  <span className="text-[15px] font-semibold text-ink">{s.role}</span>
+                  <span className="text-[13px] text-muted">{s.meta}</span>
+                </div>
+                <div className="flex w-16 shrink-0 flex-col items-end gap-0.5">
+                  <span className="text-[22px] font-semibold" style={{ color: s.color }}>{s.score}</span>
+                  <span className="text-[12px] font-medium text-muted">score</span>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 transition-transform duration-500 ease-spring group-hover:translate-x-1 group-hover:stroke-[#B4B9C6]"><path d="M9 18l6-6-6-6" /></svg>
+              </Link>
+            </Reveal>
           ))}
         </section>
       </div>
