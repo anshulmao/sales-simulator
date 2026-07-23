@@ -104,16 +104,14 @@ export function Orb({ speaker, status, localAnalyser, remoteAnalyser }: Props) {
         style={{ background: GLOW[speaker], opacity: 0.4 }}
       />
 
-      {/* The morphing blob. The whole element is softly blurred so its edges
-          feather like the cloudy reference, and the border-radius drifts to
-          read as slow molten folds. */}
+      {/* The morphing blob: layered radial gradients for the 3D look, with
+          a slowly drifting border-radius that reads as molten folds. */}
       <div
         ref={shapeRef}
         className="relative h-48 w-48 animate-blob-morph transition-[background] duration-700 will-change-transform"
         style={{
           background: FILL[speaker],
           borderRadius: "46% 54% 57% 43% / 48% 44% 56% 52%",
-          filter: "blur(7px)",
         }}
       />
     </div>
