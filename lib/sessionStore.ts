@@ -1,4 +1,4 @@
-import type { SessionConfig, TranscriptEntry } from "./types";
+import type { SessionConfig, TranscriptEntry, Report } from "./types";
 
 // Hands data between screens across a client-side navigation without a backend.
 // sessionStorage (not a store/context) so it survives the route change. These
@@ -33,6 +33,7 @@ export type StoredSession = {
   transcript: TranscriptEntry[];
   endedAt: number;
   durationMs: number;
+  report?: Report;
 };
 
 export function saveSession(session: StoredSession): void {
