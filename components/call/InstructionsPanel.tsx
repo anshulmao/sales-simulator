@@ -4,7 +4,7 @@ import { buyerSessionConfig } from "@/lib/buyerPersona";
 export function InstructionsPanel() {
   const { persona, scenario } = buyerSessionConfig;
   return (
-    <aside className="w-full max-w-xs rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5 text-sm">
+    <aside className="w-full max-w-xs rounded-2xl glass p-5 text-sm">
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
         Your brief
       </h2>

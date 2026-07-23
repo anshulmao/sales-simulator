@@ -35,10 +35,10 @@ export default function CallPage() {
   }, [transcript]);
 
   return (
-    <main className="flex min-h-screen flex-col gap-6 p-6 lg:flex-row lg:p-10">
+    <main className="mesh-bg flex min-h-screen flex-col gap-6 p-6 lg:flex-row lg:p-10">
       <InstructionsPanel />
 
-      <section className="flex flex-1 flex-col items-center justify-between gap-6 rounded-2xl border border-neutral-800 bg-neutral-950 p-6">
+      <section className="flex flex-1 flex-col items-center justify-between gap-6 rounded-2xl glass p-6">
         {/* Orb + status */}
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <Orb
@@ -87,7 +87,7 @@ export default function CallPage() {
       </section>
 
       {/* Live transcript */}
-      <aside className="flex w-full max-w-sm flex-col rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+      <aside className="flex w-full max-w-sm flex-col rounded-2xl glass p-5">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
           Transcript
         </h2>
