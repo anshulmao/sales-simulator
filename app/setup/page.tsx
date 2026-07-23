@@ -49,19 +49,33 @@ function ChipField({
   );
 }
 
-// Resistance level -> a behaviour description for the AI buyer.
+// Behaviour is an independent persona axis (not derived from resistance): each
+// trait maps to a temperament sentence that lands directly in the AI buyer's
+// system prompt via persona.behaviour.
 const BEHAVIOUR: Record<string, string> = {
-  Low: "open and receptive, willing to explore ideas and share context freely",
-  Medium: "professional but guarded — needs convincing before opening up",
-  High: "busy and skeptical of vendors; only warms up if you clearly understand their world",
+  Friendly: "warm and personable, happy to chat — but you still need real substance before committing",
+  Skeptical: "distrustful of vendors; you probe claims and push back on anything vague",
+  Analytical: "detail-driven; you want data, specifics, and a clear ROI before you engage",
+  Distracted: "busy and multitasking; the rep has to earn and hold your attention",
+};
+
+// Friendly display label -> the OpenAI Realtime voice id set on the session.
+// cedar and marin are the recommended-quality voices.
+const VOICES: Record<string, string> = {
+  Cedar: "cedar",
+  Marin: "marin",
+  Ash: "ash",
+  Verse: "verse",
 };
 
 export default function Setup() {
   const router = useRouter();
   const [role, setRole] = useState("VP of Operations");
+  const [behaviour, setBehaviour] = useState("Skeptical");
   const [industry, setIndustry] = useState("Logistics");
   const [resistance, setResistance] = useState("High");
   const [stage, setStage] = useState("Discovery");
+  const [voiceLabel, setVoiceLabel] = useState("Cedar");
   const [goal, setGoal] = useState(
     "Uncover their top operational pain and book a follow-up demo"
   );
@@ -74,11 +88,11 @@ export default function Setup() {
       persona: {
         role,
         industry: industry.toLowerCase(),
-        behaviour: BEHAVIOUR[resistance] ?? BEHAVIOUR.Medium,
+        behaviour: BEHAVIOUR[behaviour] ?? BEHAVIOUR.Skeptical,
         resistance: resistance.toLowerCase() as SessionConfig["persona"]["resistance"],
       },
       scenario: { salesStage: stage.toLowerCase(), repGoal: goal.trim() },
-      voice: "cedar",
+      voice: VOICES[voiceLabel] ?? "cedar",
     };
     saveSessionConfig(config);
     router.push("/call");
@@ -98,9 +112,11 @@ export default function Setup() {
           <div className="bezel-inner flex flex-col gap-7 px-6 py-8 sm:px-[34px]">
             <ChipField label="Session type" value="One-off call" onChange={() => {}} options={["One-off call", "Pipeline (linked sessions)"]} />
             <ChipField label="Buyer role" value={role} onChange={setRole} options={["VP of Operations", "CFO", "Procurement Lead", "IT Director"]} />
+            <ChipField label="Behaviour" value={behaviour} onChange={setBehaviour} options={Object.keys(BEHAVIOUR)} />
             <ChipField label="Industry" value={industry} onChange={setIndustry} options={["SaaS", "Logistics", "Healthcare", "Manufacturing"]} />
             <ChipField label="Resistance level" value={resistance} onChange={setResistance} tone="danger" options={["Low", "Medium", "High"]} />
             <ChipField label="Sales stage" value={stage} onChange={setStage} options={["Prospecting", "Discovery", "Objection handling", "Closing"]} />
+            <ChipField label="Buyer voice" value={voiceLabel} onChange={setVoiceLabel} options={Object.keys(VOICES)} />
             <div className="flex flex-col gap-[11px]">
               <label htmlFor="goal" className="text-[14px] font-semibold text-ink">Your goal for this call</label>
               <input
@@ -126,11 +142,11 @@ export default function Setup() {
             <div className="flex flex-col items-center gap-1.5">
               <span className="text-[19px] font-semibold text-ink">{role}</span>
               <span className="text-center text-[14px] leading-[21px] text-muted">
-                {industry} · {(BEHAVIOUR[resistance] ?? "").split(";")[0]}
+                {industry} · {(BEHAVIOUR[behaviour] ?? "").split(/[;,]/)[0]}
               </span>
             </div>
             <div className="flex w-full flex-col gap-3 border-t border-line pt-4">
-              {[["Stage", stage], ["Resistance", resistance], ["Voice", "Cedar"]].map(([k, v]) => (
+              {[["Stage", stage], ["Resistance", resistance], ["Behaviour", behaviour], ["Voice", voiceLabel]].map(([k, v]) => (
                 <div key={k} className="flex justify-between">
                   <span className="text-[14px] text-muted">{k}</span>
                   <span className="text-[14px] font-medium text-ink">{v}</span>
