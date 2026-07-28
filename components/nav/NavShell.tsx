@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { useSettings } from "@/hooks/useSettings";
 
 const NAV = [
   { label: "Home", href: "/", icon: "M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z" },
@@ -27,10 +28,17 @@ function Logo() {
   );
 }
 
-function Avatar() {
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.length === 0
+    ? "?"
+    : parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+}
+
+function Avatar({ name }: { name: string }) {
   return (
     <div className="flex h-11 w-11 items-center justify-center rounded-full text-[16px] font-semibold text-white" style={{ backgroundImage: "linear-gradient(135deg,#06B6D4,#2563EB)" }}>
-      WK
+      {initials(name)}
     </div>
   );
 }
@@ -41,6 +49,7 @@ function Avatar() {
 // render without this shell. Active route is derived from the pathname.
 export function NavShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { settings } = useSettings();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
@@ -73,9 +82,9 @@ export function NavShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="flex items-center gap-3 rounded-xl border border-line bg-white/[0.02] px-3 py-2.5">
-          <Avatar />
+          <Avatar name={settings.displayName} />
           <div className="flex flex-col">
-            <span className="text-[14px] font-semibold text-ink">William Kiong</span>
+            <span className="text-[14px] font-semibold text-ink">{settings.displayName}</span>
             <span className="text-[12px] text-muted">Sales rep</span>
           </div>
         </div>
@@ -87,7 +96,7 @@ export function NavShell({ children }: { children: ReactNode }) {
         <div className="flex flex-col gap-4 lg:hidden">
           <div className="flex items-center justify-between">
             <Logo />
-            <Avatar />
+            <Avatar name={settings.displayName} />
           </div>
           <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {NAV.map((n) => {

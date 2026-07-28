@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Blob } from "@/components/ui/Blob";
@@ -10,9 +10,11 @@ import { BackLink } from "@/components/nav/BackLink";
 import type { SessionConfig } from "@/lib/types";
 import { PERSONA_LIBRARY } from "@/lib/buyerPersona";
 import {
+  loadSettings,
   saveSessionConfig,
   saveTeleprompterPreference,
 } from "@/lib/sessionStore";
+import { VOICE_OPTIONS } from "@/lib/voices";
 
 type Tone = "primary" | "danger";
 
@@ -140,15 +142,6 @@ const BEHAVIOUR: Record<string, string> = {
   Distracted: "busy and multitasking; the rep has to earn and hold your attention",
 };
 
-// Friendly display label -> the OpenAI Realtime voice id set on the session.
-// cedar and marin are the recommended-quality voices.
-const VOICES: Record<string, string> = {
-  Cedar: "cedar",
-  Marin: "marin",
-  Ash: "ash",
-  Verse: "verse",
-};
-
 const ENVIRONMENTS = ["Cold call", "Booked demo", "Inbound enquiry", "Trade show"];
 const EXPERIENCE = ["New to sales", "1–3 years", "Experienced", "Senior"];
 
@@ -169,6 +162,11 @@ export default function Setup() {
   const [stage, setStage] = useState("Discovery");
   const [environment, setEnvironment] = useState("Cold call");
   const [voiceLabel, setVoiceLabel] = useState("Cedar");
+  // Seed the voice chip from the user's saved default (Settings screen).
+  useEffect(() => {
+    const stored = loadSettings().defaultVoiceLabel;
+    if (stored in VOICE_OPTIONS) setVoiceLabel(stored);
+  }, []);
   const [goal, setGoal] = useState(
     "Uncover their top operational pain and book a follow-up demo"
   );
@@ -216,7 +214,7 @@ export default function Setup() {
       ...(salesExperience ? { seller: { salesExperience } } : {}),
       ...(Object.keys(company).length ? { company } : {}),
       sessionType: sessionType.startsWith("Pipeline") ? "pipeline" : "one-off",
-      voice: preset ? preset.config.voice : VOICES[voiceLabel] ?? "cedar",
+      voice: preset ? preset.config.voice : VOICE_OPTIONS[voiceLabel] ?? "cedar",
     };
     saveSessionConfig(config);
     saveTeleprompterPreference(teleprompterEnabled);
@@ -261,7 +259,7 @@ export default function Setup() {
             )}
             <ChipField label="Sales stage" value={stage} onChange={setStage} options={["Prospecting", "Discovery", "Objection handling", "Closing"]} />
             <ChipField label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENTS} />
-            {!preset && <ChipField label="Buyer voice" value={voiceLabel} onChange={setVoiceLabel} options={Object.keys(VOICES)} />}
+            {!preset && <ChipField label="Buyer voice" value={voiceLabel} onChange={setVoiceLabel} options={Object.keys(VOICE_OPTIONS)} />}
             <TeleprompterToggle
               enabled={teleprompterEnabled}
               onChange={setTeleprompterEnabled}
