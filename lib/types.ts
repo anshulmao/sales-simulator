@@ -51,12 +51,19 @@ export type ReportDimension = "opening" | "discovery" | "objection" | "closing";
 
 // Produced by Phase 4, consumed by the Post-Call report screen (replaces its
 // hardcoded placeholder). Scores are 0–10.
+//
+// voice is OPTIONAL: no audio flows through the scoring pipeline today, so a
+// report without voice means "not measured" — the screen hides the panel. When
+// audio analysis exists, populating it lights the panel back up. (This replaces
+// the earlier -1 sentinel convention.)
+// scenario.closing closes the A1 gap: overall is the mean of all four coached
+// dimensions, and now all four are displayable.
 export type Report = {
   overall: number;
   headline: string;
   summary: string;
-  voice: { clarity: number; pace: number; tone: number };
-  scenario: { opening: number; discovery: number; o: number };
+  voice?: { clarity: number; pace: number; tone: number };
+  scenario: { opening: number; discovery: number; o: number; closing: number };
   keyMoments: { atMs: number; label: string; note: string }[];
   strengths: { title: string; detail: string }[];
   improvements: { title: string; detail: string }[];
