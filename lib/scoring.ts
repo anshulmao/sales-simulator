@@ -225,13 +225,6 @@ function validateJudgments(
   return result;
 }
 
-// -1 marks a value we did not measure. There is NO audio anywhere in this
-// pipeline, so any 0–10 number for voice would be fabricated, not estimated.
-// -1 is deliberately outside the 0–10 range so it cannot read as a real score;
-// range-aware UI should render it as "not measured". The clean fix is to make
-// Report.voice optional in the contract — a coordinated change to types.ts.
-const VOICE_UNAVAILABLE = -1;
-
 // Aggregate validated judgments into the Report. All arithmetic lives here;
 // every field is derived from the rubric judgments, never asked of the model.
 function buildReport(
@@ -249,14 +242,13 @@ function buildReport(
   const objection = dimScore("objection");
   const closing = dimScore("closing");
 
-  // A1 (team decision): closing is scored and counts toward overall even though
-  // Report.scenario has no slot to display it — so overall is the mean of all
-  // four coached dimensions, and won't equal the mean of the three visible bars.
+  // overall = mean of all four coached dimensions, and all four are visible
+  // (scenario.closing was added to the contract, closing the old A1 gap).
   const overall = Math.round((opening + discovery + objection + closing) / 4);
 
   // `o` is objection — confirmed a truncation of "objection" in the Report
-  // contract, not a distinct field. Closing is intentionally absent here (A1).
-  const scenario = { opening, discovery, o: objection };
+  // contract, not a distinct field.
+  const scenario = { opening, discovery, o: objection, closing };
 
   // strengths/improvements: title from the rubric, detail = the observable
   // criterion verbatim. Placement (passed → strength, failed → improvement)
@@ -314,15 +306,12 @@ function buildReport(
     ? `Work on ${worst.name}: ${firstMiss.text}.`
     : "No coached behaviors missed — raise the difficulty with a higher-resistance buyer or tougher objections.";
 
+  // voice is omitted: no audio flows through this pipeline, so there is nothing
+  // to measure and the report screen hides the panel (see Report in types.ts).
   return {
     overall,
     headline,
     summary,
-    voice: {
-      clarity: VOICE_UNAVAILABLE,
-      pace: VOICE_UNAVAILABLE,
-      tone: VOICE_UNAVAILABLE,
-    },
     scenario,
     keyMoments,
     strengths,

@@ -52,6 +52,40 @@ export function loadTeleprompterPreference(): boolean {
   }
 }
 
+// --- App-level preferences (Settings screen) ---
+// localStorage (not sessionStorage) so they survive tab close. Kept out of
+// SessionConfig, which is the per-call contract shared with the buyer/report
+// flows; these are user defaults the setup screen reads to seed its form.
+const SETTINGS_KEY = "salescoach:settings";
+
+export type AppSettings = {
+  displayName: string;
+  defaultVoiceLabel: string; // display label; see VOICE_OPTIONS in lib/voices.ts
+};
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  displayName: "William Kiong",
+  defaultVoiceLabel: "Cedar",
+};
+
+export function saveSettings(settings: AppSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* localStorage unavailable — settings stay in-memory for the visit */
+  }
+}
+
+export function loadSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<AppSettings>) };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
 // --- Phase 3 -> 4: the finished call, persisted + scored ---
 export type StoredSession = {
   id?: string; // assigned on save

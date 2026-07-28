@@ -1,15 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
 import { NavShell } from "@/components/nav/NavShell";
 import { SessionRow } from "@/components/session/SessionRow";
 import { useSessions } from "@/hooks/useSessions";
+import { useSettings } from "@/hooks/useSettings";
 
 export default function Home() {
   const { sessions, loading } = useSessions();
+  const { settings } = useSettings();
+
+  // Time-of-day is clock-dependent, so compute it after mount to keep the
+  // server and first client render identical.
+  const [dayPart, setDayPart] = useState("afternoon");
+  useEffect(() => {
+    const h = new Date().getHours();
+    setDayPart(h < 12 ? "morning" : h < 18 ? "afternoon" : "evening");
+  }, []);
+  const firstName = settings.displayName.trim().split(/\s+/)[0] || "there";
 
   // Real dashboard figures derived from stored sessions — no hardcoded metrics.
   const stats = useMemo(() => {
@@ -34,7 +45,7 @@ export default function Home() {
     <NavShell>
       <Reveal as="header" className="flex items-center justify-between">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">Good afternoon, William</h1>
+          <h1 className="text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">Good {dayPart}, {firstName}</h1>
           <p className="text-[14px] text-muted sm:text-[15px]">
             {loading ? "Loading your practice…" : stats.count === 0 ? "No sessions yet — run your first roleplay." : `You've run ${stats.count} ${stats.count === 1 ? "call" : "calls"} so far.`}
           </p>

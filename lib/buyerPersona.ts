@@ -93,6 +93,21 @@ export const enthusiastPersona: SessionConfig = {
   voice: "coral",
 };
 
+// The library above, in pickable form for the setup screen. `tagline` is the
+// one-line description the picker shows; the full temperament stays in the
+// config's behaviour text. Keys are stable ids, labels are display names.
+export const PERSONA_LIBRARY: {
+  key: string;
+  label: string;
+  tagline: string;
+  config: SessionConfig;
+}[] = [
+  { key: "skeptic", label: "The Skeptic", tagline: "Terse CFO who concedes nothing without hard proof — but means the rare yes", config: skepticPersona },
+  { key: "talker", label: "The Talker", tagline: "Warm, rambling founder who over-shares but stays fuzzy on commitments", config: talkerPersona },
+  { key: "evasive", label: "The Evader", tagline: "Smooth IT manager who never says no — and never really says yes", config: evasivePersona },
+  { key: "enthusiast", label: "The Enthusiast", tagline: "Eager product lead whose sincere yes outruns his authority and budget", config: enthusiastPersona },
+];
+
 // Compile a SessionConfig into the system instructions that define how the AI
 // buyer behaves. This is the ONLY place persona strings are assembled — the
 // hook and token route stay persona-agnostic.
@@ -114,7 +129,7 @@ export function buildInstructions(config: SessionConfig): string {
   // Optional context — pushed only when the SessionConfig carries the field.
   if (scenario.environment)        lines.push(`Context: this is a ${scenario.environment}. Let that set your opening posture and time pressure.`);
   if (persona.engagementHistory)   lines.push(`You've spoken before: ${persona.engagementHistory}. Reference that history naturally.`);
-  if (config.company?.product)     lines.push(`The rep sells: ${config.company.product}${config.company.marketPositioning ? `, positioned as ${config.company.marketPositioning}` : ""}. Raise objections a real buyer in this market would.`);
+  if (config.company?.product)     lines.push(`The rep sells: ${config.company.product}${config.company.brand ? ` (a company called ${config.company.brand})` : ""}${config.company.marketPositioning ? `, positioned as ${config.company.marketPositioning}` : ""}. Raise objections a real buyer in this market would.`);
   // This exposes the rep's sales playbook to the buyer — same category of leak
   // as the earlier repGoal issue, since the buyer now knows the rep's intended
   // script rather than reacting to what they actually do. Followed as specced

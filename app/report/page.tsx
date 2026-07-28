@@ -192,7 +192,9 @@ export default function ReportPage() {
 
   const report = session.report;
   const meta = `${session.config.persona.role} · ${cap(session.config.scenario.salesStage)} · ${cap(session.config.persona.resistance)} resistance · ${fmtDuration(session.durationMs)} · ${new Date(session.endedAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })}`;
-  const voice = report
+  // voice is optional on the contract — no audio pipeline yet. Render the
+  // panel only when a report actually carries measurements.
+  const voice = report?.voice
     ? [
         { label: "Clarity", value: report.voice.clarity },
         { label: "Pace & speed", value: report.voice.pace },
@@ -204,6 +206,7 @@ export default function ReportPage() {
         { label: "Opening", value: report.scenario.opening, color: "#60A5FA" },
         { label: "Discovery & needs", value: report.scenario.discovery, color: "#60A5FA" },
         { label: "Objection handling", value: report.scenario.o, color: "#F59E0B" },
+        { label: "Closing", value: report.scenario.closing, color: "#A78BFA" },
       ]
     : [];
 
@@ -300,17 +303,16 @@ export default function ReportPage() {
               <div className="bezel-inner flex flex-col gap-6 px-6 py-[30px] sm:px-[34px]">
                 <span className="text-[17px] font-semibold text-ink">Score breakdown</span>
                 <div className="flex flex-col gap-8 sm:flex-row sm:gap-10">
-                  <div className="flex flex-1 flex-col gap-[18px]">
-                    <div className="flex items-baseline justify-between gap-3">
+                  {voice.length > 0 && (
+                    <div className="flex flex-1 flex-col gap-[18px]">
                       <span className="text-[13px] font-semibold tracking-[0.1em] text-[#22D3EE]">VOICE</span>
-                      <span className="text-[11px] text-muted">audio analysis unavailable</span>
+                      <div className="flex flex-col gap-4">
+                        {voice.map((metric) => (
+                          <Meter key={metric.label} label={metric.label} value={metric.value} color="#22D3EE" animate={animate} />
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-4">
-                      {voice.map((metric) => (
-                        <Meter key={metric.label} label={metric.label} value={metric.value} color="#22D3EE" animate={animate} />
-                      ))}
-                    </div>
-                  </div>
+                  )}
                   <div className="flex flex-1 flex-col gap-[18px]">
                     <span className="text-[13px] font-semibold tracking-[0.1em] text-[#93C5FD]">SCENARIO</span>
                     <div className="flex flex-col gap-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Blob } from "@/components/ui/Blob";
@@ -8,10 +8,13 @@ import { Cta } from "@/components/ui/Cta";
 import { Reveal } from "@/components/ui/Reveal";
 import { BackLink } from "@/components/nav/BackLink";
 import type { SessionConfig } from "@/lib/types";
+import { PERSONA_LIBRARY } from "@/lib/buyerPersona";
 import {
+  loadSettings,
   saveSessionConfig,
   saveTeleprompterPreference,
 } from "@/lib/sessionStore";
+import { VOICE_OPTIONS } from "@/lib/voices";
 
 type Tone = "primary" | "danger";
 
@@ -139,21 +142,18 @@ const BEHAVIOUR: Record<string, string> = {
   Distracted: "busy and multitasking; the rep has to earn and hold your attention",
 };
 
-// Friendly display label -> the OpenAI Realtime voice id set on the session.
-// cedar and marin are the recommended-quality voices.
-const VOICES: Record<string, string> = {
-  Cedar: "cedar",
-  Marin: "marin",
-  Ash: "ash",
-  Verse: "verse",
-};
-
 const ENVIRONMENTS = ["Cold call", "Booked demo", "Inbound enquiry", "Trade show"];
 const EXPERIENCE = ["New to sales", "1–3 years", "Experienced", "Senior"];
 
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
 export default function Setup() {
   const router = useRouter();
-  // Core persona + scenario
+  // Core persona + scenario. "Custom" composes the persona from the chips
+  // below; a library preset uses one of the pre-written buyers wholesale
+  // (persona + voice), while scenario and context still come from the form.
+  const [presetLabel, setPresetLabel] = useState("Custom");
+  const preset = PERSONA_LIBRARY.find((p) => p.label === presetLabel) ?? null;
   const [sessionType, setSessionType] = useState("One-off call");
   const [role, setRole] = useState("VP of Operations");
   const [behaviour, setBehaviour] = useState("Skeptical");
@@ -162,6 +162,11 @@ export default function Setup() {
   const [stage, setStage] = useState("Discovery");
   const [environment, setEnvironment] = useState("Cold call");
   const [voiceLabel, setVoiceLabel] = useState("Cedar");
+  // Seed the voice chip from the user's saved default (Settings screen).
+  useEffect(() => {
+    const stored = loadSettings().defaultVoiceLabel;
+    if (stored in VOICE_OPTIONS) setVoiceLabel(stored);
+  }, []);
   const [goal, setGoal] = useState(
     "Uncover their top operational pain and book a follow-up demo"
   );
@@ -189,13 +194,18 @@ export default function Setup() {
     };
 
     const config: SessionConfig = {
-      persona: {
-        role,
-        industry: industry.toLowerCase(),
-        behaviour: BEHAVIOUR[behaviour] ?? BEHAVIOUR.Skeptical,
-        resistance: resistance.toLowerCase() as SessionConfig["persona"]["resistance"],
-        ...(history.trim() ? { engagementHistory: history.trim() } : {}),
-      },
+      persona: preset
+        ? {
+            ...preset.config.persona,
+            ...(history.trim() ? { engagementHistory: history.trim() } : {}),
+          }
+        : {
+            role,
+            industry: industry.toLowerCase(),
+            behaviour: BEHAVIOUR[behaviour] ?? BEHAVIOUR.Skeptical,
+            resistance: resistance.toLowerCase() as SessionConfig["persona"]["resistance"],
+            ...(history.trim() ? { engagementHistory: history.trim() } : {}),
+          },
       scenario: {
         salesStage: stage.toLowerCase(),
         repGoal: goal.trim(),
@@ -204,7 +214,7 @@ export default function Setup() {
       ...(salesExperience ? { seller: { salesExperience } } : {}),
       ...(Object.keys(company).length ? { company } : {}),
       sessionType: sessionType.startsWith("Pipeline") ? "pipeline" : "one-off",
-      voice: VOICES[voiceLabel] ?? "cedar",
+      voice: preset ? preset.config.voice : VOICE_OPTIONS[voiceLabel] ?? "cedar",
     };
     saveSessionConfig(config);
     saveTeleprompterPreference(teleprompterEnabled);
@@ -228,13 +238,28 @@ export default function Setup() {
         <Reveal delay={80} className="bezel flex-1">
           <div className="bezel-inner flex flex-col gap-7 px-6 py-8 sm:px-[34px]">
             <ChipField label="Session type" value={sessionType} onChange={setSessionType} options={["One-off call", "Pipeline (linked sessions)"]} />
-            <ChipField label="Buyer role" value={role} onChange={setRole} options={["VP of Operations", "CFO", "Procurement Lead", "IT Director"]} />
-            <ChipField label="Behaviour" value={behaviour} onChange={setBehaviour} options={Object.keys(BEHAVIOUR)} />
-            <ChipField label="Industry" value={industry} onChange={setIndustry} options={["SaaS", "Logistics", "Healthcare", "Manufacturing"]} />
-            <ChipField label="Resistance level" value={resistance} onChange={setResistance} tone="danger" options={["Low", "Medium", "High"]} />
+            <ChipField label="Buyer preset" value={presetLabel} onChange={setPresetLabel} options={["Custom", ...PERSONA_LIBRARY.map((p) => p.label)]} />
+            {preset ? (
+              <div className="flex flex-col gap-2 rounded-[14px] border border-primary/25 bg-primary/[0.06] px-[18px] py-4">
+                <span className="text-[14px] font-semibold text-ink">
+                  {preset.config.persona.role} · {preset.config.persona.industry}
+                </span>
+                <p className="text-[13px] leading-[19px] text-muted">{preset.tagline}.</p>
+                <span className="text-[12px] text-muted">
+                  Resistance {preset.config.persona.resistance} · Voice {cap(preset.config.voice)}
+                </span>
+              </div>
+            ) : (
+              <>
+                <ChipField label="Buyer role" value={role} onChange={setRole} options={["VP of Operations", "CFO", "Procurement Lead", "IT Director"]} />
+                <ChipField label="Behaviour" value={behaviour} onChange={setBehaviour} options={Object.keys(BEHAVIOUR)} />
+                <ChipField label="Industry" value={industry} onChange={setIndustry} options={["SaaS", "Logistics", "Healthcare", "Manufacturing"]} />
+                <ChipField label="Resistance level" value={resistance} onChange={setResistance} tone="danger" options={["Low", "Medium", "High"]} />
+              </>
+            )}
             <ChipField label="Sales stage" value={stage} onChange={setStage} options={["Prospecting", "Discovery", "Objection handling", "Closing"]} />
             <ChipField label="Environment" value={environment} onChange={setEnvironment} options={ENVIRONMENTS} />
-            <ChipField label="Buyer voice" value={voiceLabel} onChange={setVoiceLabel} options={Object.keys(VOICES)} />
+            {!preset && <ChipField label="Buyer voice" value={voiceLabel} onChange={setVoiceLabel} options={Object.keys(VOICE_OPTIONS)} />}
             <TeleprompterToggle
               enabled={teleprompterEnabled}
               onChange={setTeleprompterEnabled}
@@ -265,13 +290,21 @@ export default function Setup() {
             <span className="text-[13px] font-semibold tracking-[0.12em] text-muted">YOUR BUYER</span>
             <Blob size={120} glow={70} />
             <div className="flex flex-col items-center gap-1.5">
-              <span className="text-[19px] font-semibold text-ink">{role}</span>
+              <span className="text-[19px] font-semibold text-ink">{preset ? preset.config.persona.role : role}</span>
               <span className="text-center text-[14px] leading-[21px] text-muted">
-                {industry} · {(BEHAVIOUR[behaviour] ?? "").split(/[;,]/)[0]}
+                {preset
+                  ? `${preset.config.persona.industry} · ${preset.tagline}`
+                  : `${industry} · ${(BEHAVIOUR[behaviour] ?? "").split(/[;,]/)[0]}`}
               </span>
             </div>
             <div className="flex w-full flex-col gap-3 border-t border-line pt-4">
-              {[["Stage", stage], ["Environment", environment], ["Resistance", resistance], ["Behaviour", behaviour], ["Voice", voiceLabel]].map(([k, v]) => (
+              {[
+                ["Stage", stage],
+                ["Environment", environment],
+                ["Resistance", preset ? cap(preset.config.persona.resistance) : resistance],
+                ["Behaviour", preset ? preset.label : behaviour],
+                ["Voice", preset ? cap(preset.config.voice) : voiceLabel],
+              ].map(([k, v]) => (
                 <div key={k} className="flex justify-between">
                   <span className="text-[14px] text-muted">{k}</span>
                   <span className="text-[14px] font-medium text-ink">{v}</span>
