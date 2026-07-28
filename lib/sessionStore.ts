@@ -201,6 +201,34 @@ export async function retrySessionScoring(
   return data.report;
 }
 
+// Analyze the rep's recorded audio for a just-saved session and attach the
+// voice block to its report. Best-effort by contract: callers ignore failures —
+// voice must never cost the transcript-based report. For DB sessions the server
+// merges into the stored report; for local fallback sessions we merge into the
+// localStorage copy here.
+export async function analyzeSessionVoice(
+  id: string,
+  wavBase64: string
+): Promise<void> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/voice`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ audio: wavBase64 }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    voice?: Report["voice"];
+    error?: string;
+  };
+  if (!res.ok || !data.voice) {
+    throw new Error(data.error ?? "Voice analysis failed.");
+  }
+
+  const current = readLocal(id);
+  if (current?.report) {
+    stashLocal({ ...current, report: { ...current.report, voice: data.voice } });
+  }
+}
+
 // ⚠️ ASYNC — callers must `await`. Lists past sessions for the history/progress
 // screen. DB first, then whatever local fallback records exist.
 export async function loadSessions(): Promise<SessionSummary[]> {

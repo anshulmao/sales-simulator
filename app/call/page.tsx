@@ -6,11 +6,13 @@ import { useRealtimeSession } from "@/hooks/useRealtimeSession";
 import { useLiveCoach } from "@/hooks/useLiveCoach";
 import { buyerSessionConfig } from "@/lib/buyerPersona";
 import {
+  analyzeSessionVoice,
   loadSessionConfig,
   loadTeleprompterPreference,
   saveSession,
   saveTeleprompterPreference,
 } from "@/lib/sessionStore";
+import { blobToWavBase64 } from "@/lib/audio";
 import type { SessionConfig } from "@/lib/types";
 import { Orb } from "@/components/call/Orb";
 import { CallControls } from "@/components/call/CallControls";
@@ -71,6 +73,7 @@ function CallScreen({
   const router = useRouter();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [savingLabel, setSavingLabel] = useState("Saving your report…");
   const [teleprompterEnabled, setTeleprompterEnabled] = useState(
     initialTeleprompterEnabled
   );
@@ -86,6 +89,7 @@ function CallScreen({
     start,
     toggleMute,
     endCall,
+    getRecordingBlob,
   } = useRealtimeSession(config);
   const {
     suggestion,
@@ -123,6 +127,19 @@ function CallScreen({
         endedAt: Date.now(),
         durationMs: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
       });
+      // Voice analysis is best-effort: it adds the clarity/pace/tone block to
+      // the report, but any failure (no recording, decode error, model down)
+      // must never cost the transcript-based report we just saved.
+      try {
+        const blob = await getRecordingBlob();
+        const audio = blob ? await blobToWavBase64(blob) : null;
+        if (audio) {
+          setSavingLabel("Analyzing your voice…");
+          await analyzeSessionVoice(id, audio);
+        }
+      } catch {
+        /* report proceeds without the voice panel */
+      }
       router.push(`/report?id=${encodeURIComponent(id)}`);
     } finally {
       setIsSaving(false);
@@ -192,7 +209,7 @@ function CallScreen({
         {isSaving ? (
           <span className="flex w-max items-center gap-2.5 py-1 text-[14px] font-medium text-muted">
             <span className="h-2 w-2 animate-ambient-pulse rounded-full bg-primary" />
-            Saving your report…
+            {savingLabel}
           </span>
         ) : (
           <BackLink
