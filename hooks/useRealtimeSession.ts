@@ -37,6 +37,12 @@ export function useRealtimeSession(config: SessionConfig) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // Records the rep's mic for post-call voice analysis (the buyer's audio never
+  // enters this recording). Best-effort: if MediaRecorder is unavailable the
+  // call runs normally and voice analysis is simply skipped.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recorderStoppedRef = useRef<Promise<void> | null>(null);
 
   // StrictMode double-mount guard: a second init while one is in flight (or one
   // is already live) must be a no-op.
@@ -145,6 +151,15 @@ export function useRealtimeSession(config: SessionConfig) {
     pcRef.current?.close();
     pcRef.current = null;
 
+    // Stop the recorder BEFORE the tracks so the final chunk flushes cleanly.
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        /* already stopping */
+      }
+    }
+
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
 
@@ -234,6 +249,23 @@ export function useRealtimeSession(config: SessionConfig) {
         return;
       }
       localStreamRef.current = localStream;
+
+      // Record the mic for post-call voice analysis. 1 s timeslices so chunks
+      // accumulate during the call rather than one giant buffer at stop.
+      try {
+        const recorder = new MediaRecorder(localStream);
+        recorderRef.current = recorder;
+        recordedChunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+        };
+        recorderStoppedRef.current = new Promise((resolve) => {
+          recorder.onstop = () => resolve();
+        });
+        recorder.start(1000);
+      } catch {
+        recorderRef.current = null;
+      }
 
       // 3. Peer connection.
       const pc = new RTCPeerConnection();
@@ -336,6 +368,24 @@ export function useRealtimeSession(config: SessionConfig) {
     return transcript;
   }, [teardown, transcript]);
 
+  // The rep's recorded audio, available after endCall (teardown stops the
+  // recorder; this awaits its final flush). Null in mock mode, when recording
+  // was unavailable, or when nothing was captured.
+  const getRecordingBlob = useCallback(async (): Promise<Blob | null> => {
+    const recorder = recorderRef.current;
+    if (!recorder) return null;
+    if (recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        /* already stopping */
+      }
+    }
+    await recorderStoppedRef.current;
+    if (recordedChunksRef.current.length === 0) return null;
+    return new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+  }, []);
+
   // Cleanup on unmount — fully tears down the connection so StrictMode's
   // mount -> unmount -> remount cannot leave two peer connections open.
   useEffect(() => {
@@ -356,5 +406,6 @@ export function useRealtimeSession(config: SessionConfig) {
     start,
     toggleMute,
     endCall,
+    getRecordingBlob,
   };
 }
